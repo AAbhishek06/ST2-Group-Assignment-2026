@@ -1,33 +1,38 @@
-# utilities.py
+#utilities.py
 import pygame
 from configure import *
 
 pygame.init()
 
-# ---------- Colour System ----------
+#Colour scheme
 PRIMARY         = (33, 33, 33)
 PRIMARY_HOVER   = (66, 66, 66)
 ACCENT          = (158, 158, 158)
 
-# Layout
+#Layout
 BACKGROUND      = (180, 180, 180)
 SURFACE         = (30, 30, 30)
 
-# Typography
+#typography
 TEXT_PRIMARY    = (245, 245, 245)
 TEXT_SECONDARY  = (170, 170, 170)
 
-# UI Elements
+#UI elements
 BORDER          = (55, 55, 55)
 
 SUCCESS         = (140, 140, 140)
 WARNING         = (100, 100, 100)
 DANGER          = (200, 200, 200)
 
-# Node Specifics
+#Node specifics
 NODE_FILL       = (45, 45, 45)
 NODE_HIGHLIGHT  = (80, 80, 80)
-# ---------- Fonts ----------
+
+TEXT  = DARK_GREY
+
+
+
+#Fonts
 def create_fonts():
     return {
         "title": pygame.font.SysFont("Verdana", TITLE_FONT_SIZE, bold=True),
@@ -36,7 +41,7 @@ def create_fonts():
         "small": pygame.font.SysFont("Verdana", SMALL_FONT_SIZE),
     }
 
-# ---------- Text ----------
+#Text
 def draw_text(screen, text, x, y, font, colour=TEXT_PRIMARY, centre=False):
     surface = font.render(str(text), True, colour)
     rect = surface.get_rect()
@@ -52,13 +57,13 @@ def draw_text(screen, text, x, y, font, colour=TEXT_PRIMARY, centre=False):
 def draw_title(screen, title, font):
     draw_text(screen, title, WIDTH // 2, TITLE_Y, font, PRIMARY, centre=True)
 
-# ---------- Status Bar ----------
+#Status bar
 def draw_status(screen, message, font):
     pygame.draw.rect(screen, SURFACE, (0, HEIGHT - 50, WIDTH, 50))
     pygame.draw.line(screen, BORDER, (0, HEIGHT - 50), (WIDTH, HEIGHT - 50), 1)
     draw_text(screen, message, 20, HEIGHT - 32, font, TEXT_SECONDARY)
 
-# ---------- Buttons ----------
+#Buttons
 def draw_button(screen, rect, text, font, mouse_pos=None, active=True):
     if not active:
         colour = BORDER
@@ -78,7 +83,7 @@ def draw_back_button(screen, font, mouse_pos=None):
     draw_button(screen, rect, "Back to Menu", font, mouse_pos)
     return rect
 
-# ---------- Input Box ----------
+#Input box
 def draw_input_box(screen, rect, text, font, active=False, mouse_pos=None):
     if active:
         border_colour = PRIMARY
@@ -92,7 +97,7 @@ def draw_input_box(screen, rect, text, font, active=False, mouse_pos=None):
 
     draw_text(screen, text, rect.x + 12, rect.centery, font, TEXT_PRIMARY)
 
-# ---------- Nodes ----------
+#Graph nodes
 def draw_node_rect(screen, x, y, value, font, highlight=False):
     fill = NODE_HIGHLIGHT if highlight else NODE_FILL
     outline = PRIMARY if highlight else BORDER
@@ -105,7 +110,7 @@ def draw_node_rect(screen, x, y, value, font, highlight=False):
     draw_text(screen, value, rect.centerx, rect.centery, font, TEXT_PRIMARY, centre=True)
     return rect
 
-# ---------- Arrows ----------
+#Arrows
 def draw_arrow(screen, start_pos, end_pos, colour=TEXT_PRIMARY, width=2):
     pygame.draw.line(screen, colour, start_pos, end_pos, width)
 
@@ -124,6 +129,6 @@ def draw_arrow(screen, start_pos, end_pos, colour=TEXT_PRIMARY, width=2):
 
     pygame.draw.polygon(screen, colour, [(x2, y2), left, right])
 
-# ---------- Screen ----------
+#Window
 def clear_screen(screen):
     screen.fill(BACKGROUND)
