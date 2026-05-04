@@ -1,102 +1,107 @@
-# menu.py
-# Main menu screen for the DSA Explorer and Visualiser App
-
+#menu.py
 import pygame
+
+from Phase_1 import stack_queue
+from Phase_1 import linked_list
+from Phase_1 import bst
+
+
+from Phase_2 import sorting
+from Phase_2 import graph
+from Phase_2 import heap
+
+from Phase_3 import pathfinding
+from Phase_3 import event_queue
+from Phase_3 import dynamic
+
 from configure import *
-from utilities import create_fonts, clear_screen, draw_title, draw_text, draw_button, draw_status
+from utilities import *
 
+pygame.init()
 
-def run_menu(screen, clock, module_names):
-    fonts = create_fonts()
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("DSA Explorer and Visualiser App")
 
-    buttons = []
-    start_y = 130
+clock = pygame.time.Clock()
+fonts = create_fonts()
 
-    for index, name in enumerate(module_names):
-        x = (WIDTH - MENU_BUTTON_WIDTH) // 2
-        y = start_y + index * (MENU_BUTTON_HEIGHT + MENU_BUTTON_GAP)
-        rect = pygame.Rect(x, y, MENU_BUTTON_WIDTH, MENU_BUTTON_HEIGHT)
-        buttons.append((name, rect))
+phase_modules = {
+    "Phase 1": [
+        ("Stack Queue", stack_queue.run_stack_queue),
+        ("Linked List", linked_list.run_linked_list),
+        ("BST", bst.run_bst),
+    ],
+    "Phase 2": [
+        ("Sorting", sorting.run_sorting),
+        ("Graph", graph.run_graph),
+        ("Heap", heap.run_heap),
+    ],
+    "Phase 3": [
+        ("Pathfinding", pathfinding.run_pathfinding),
+        ("Event Queue", event_queue.run_event_queue),
+        ("Dynamic", dynamic.run_dynamic),
+    ]
+}
 
-    exit_rect = pygame.Rect(
-        (WIDTH - MENU_BUTTON_WIDTH) // 2,
-        start_y + len(module_names) * (MENU_BUTTON_HEIGHT + MENU_BUTTON_GAP) + 15,
-        MENU_BUTTON_WIDTH,
-        MENU_BUTTON_HEIGHT
-    )
+columns = {
+    "Phase 1": WIDTH // 6,
+    "Phase 2": WIDTH // 2,
+    "Phase 3": (WIDTH * 5) // 6,
+}
 
-    running = True
+start_y = 180
+gap = 80
 
-    while running:
-        mouse_pos = pygame.mouse.get_pos()
+button_width = 240
+button_height = 50
 
-        clear_screen(screen)
+phase_buttons = {}
 
-        draw_title(screen, "DSA Explorer and Visualiser App", fonts["title"])
+for phase, items in phase_modules.items():
+    x = columns[phase]
+    y = start_y
 
-        draw_text(
-            screen,
-            "Select a module to explore data structures, algorithms, visualisations, and puzzles.",
-            WIDTH // 2,
-            88,
-            fonts["small"],
-            DARK_GREY,
-            centre=True
-        )
+    phase_buttons[phase] = []
 
+    for name, _ in items:
+        rect = pygame.Rect(x - button_width // 2, y, button_width, button_height)
+        phase_buttons[phase].append((name, rect))
+        y += gap
+
+running = True
+
+while running:
+    mouse_pos = pygame.mouse.get_pos()
+
+    clear_screen(screen)
+
+    draw_title(screen, "DSA Explorer and Visualiser App", fonts["title"])
+
+    draw_text(screen, "Phase 1", columns["Phase 1"], 130, fonts["heading"], TEXT, centre=True)
+
+    draw_text(screen, "Phase 2", columns["Phase 2"], 130, fonts["heading"], TEXT, centre=True)
+
+    draw_text(screen, "Phase 3", columns["Phase 3"], 130, fonts["heading"], TEXT, centre=True)
+
+    for phase, buttons in phase_buttons.items():
         for name, rect in buttons:
             draw_button(screen, rect, name, fonts["normal"], mouse_pos)
 
-        draw_button(screen, exit_rect, "Exit", fonts["normal"], mouse_pos)
+    draw_status(screen, "Select a module to launch", fonts["small"])
 
-        draw_status(
-            screen,
-            "Mouse: select module | Each module returns to this menu | Week 13 demo-ready navigation",
-            fonts["small"]
-        )
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
 
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                return "Exit"
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            for phase, items in phase_modules.items():
+                for i, (name, func) in enumerate(items):
+                    rect = phase_buttons[phase][i][1]
 
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    return "Exit"
+                    if rect.collidepoint(event.pos):
+                        func(screen, clock)
 
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button == 1:
-                    for name, rect in buttons:
-                        if rect.collidepoint(event.pos):
-                            return name
+    pygame.display.flip()
+    clock.tick(FPS)
 
-                    if exit_rect.collidepoint(event.pos):
-                        return "Exit"
-
-        pygame.display.flip()
-        clock.tick(FPS)
-
-
-# Allows testing menu.py before main.py and phase files are finished
-if __name__ == "__main__":
-    pygame.init()
-
-    screen = pygame.display.set_mode((WIDTH, HEIGHT))
-    pygame.display.set_caption("DSA Explorer Menu Test")
-    clock = pygame.time.Clock()
-
-    test_modules = [
-        "Stack and Queue",
-        "Linked List",
-        "Binary Search Tree",
-        "Sorting Algorithms",
-        "Graph Traversal",
-        "Heap Visualiser",
-        "Pathfinding Puzzle",
-        "Event Queue Simulator",
-        "Dynamic Programming Puzzle",
-    ]
-
-    selected = run_menu(screen, clock, test_modules)
-    print("Selected:", selected)
-
-    pygame.quit()
+pygame.quit()
