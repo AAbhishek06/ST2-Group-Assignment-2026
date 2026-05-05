@@ -28,10 +28,8 @@ Dynamic programming grid path visualisation
 
 Project Structure
 
-main.py
-Entry point of the application
 menu.py
-Handles navigation between modules
+Entry point and handles navigation between modules
 configure.py
 Stores global constants like colors and screen size
 utilities.py
