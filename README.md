@@ -46,7 +46,7 @@ How to Run
 Install dependencies
 pip install pygame
 Run the application
-python main.py
+python menu.py
 Use mouse clicks to navigate between modules
 
 Controls
