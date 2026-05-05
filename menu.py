@@ -1,4 +1,4 @@
-#menu.py
+#main.py
 import pygame
 
 from Phase_1 import stack_queue
