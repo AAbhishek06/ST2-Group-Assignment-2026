@@ -1,19 +1,20 @@
-# main.py
+# Imports
 import pygame
 
 from Phase_1 import stack_queue, linked_list, bst
 from Phase_2 import sorting, graph, heap
 from Phase_3 import pathfinding, event_queue, dynamic
-
 from ui import *
 
 pygame.init()
 
+# Setup
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("DSA Explorer")
 clock = pygame.time.Clock()
 fonts = create_fonts()
 
+# Modules
 MODULES = {
     "Phase 1": [
         ("Stack & Queue", "Push, pop, enqueue and dequeue", "1.1", stack_queue.run_stack_queue),
@@ -32,39 +33,69 @@ MODULES = {
     ],
 }
 
-usable_width = WIDTH - (MENU_SIDE_PAD * 2) - (MENU_COL_GAP * (MENU_COL_COUNT - 1))
-COL_W = usable_width // MENU_COL_COUNT
-
+# Layout
 CONTENT_TOP = HEADER_H + 42
+COL_W = (
+    WIDTH
+    - (MENU_SIDE_PAD * 2)
+    - (MENU_COL_GAP * (MENU_COL_COUNT - 1))
+) // MENU_COL_COUNT
 
 
 def col_left(index):
     return MENU_SIDE_PAD + index * (COL_W + MENU_COL_GAP)
 
 
-card_rects = {}
-
-for col_index, (phase, items) in enumerate(MODULES.items()):
-    x = col_left(col_index)
-    card_rects[phase] = []
-
-    for row_index, (name, desc, icon, func) in enumerate(items):
-        y = CONTENT_TOP + MENU_SEC_H + 14 + row_index * (MENU_CARD_H + MENU_CARD_GAP)
-        rect = pygame.Rect(x, y, COL_W, MENU_CARD_H)
-        card_rects[phase].append((name, desc, icon, func, rect))
+# Cards
+card_rects = {
+    phase: [
+        (
+            name,
+            desc,
+            icon,
+            func,
+            pygame.Rect(
+                col_left(col_index),
+                CONTENT_TOP + MENU_SEC_H + 14 + row_index * (MENU_CARD_H + MENU_CARD_GAP),
+                COL_W,
+                MENU_CARD_H
+            )
+        )
+        for row_index, (name, desc, icon, func) in enumerate(items)
+    ]
+    for col_index, (phase, items) in enumerate(MODULES.items())
+}
 
 
 def draw_cards(mouse_pos):
-    for col_index, (phase, items) in enumerate(MODULES.items()):
+    for col_index, phase in enumerate(MODULES):
         x = col_left(col_index)
         colour = PHASE_COLOURS[phase]
 
-        draw_menu_section_label(screen, x, CONTENT_TOP, COL_W, phase, colour, fonts)
+        draw_menu_section_label(
+            screen,
+            x,
+            CONTENT_TOP,
+            COL_W,
+            phase,
+            colour,
+            fonts
+        )
 
         for name, desc, icon, func, rect in card_rects[phase]:
-            draw_menu_card(screen, name, desc, icon, rect, colour, mouse_pos, fonts)
+            draw_menu_card(
+                screen,
+                name,
+                desc,
+                icon,
+                rect,
+                colour,
+                mouse_pos,
+                fonts
+            )
 
 
+# Main screen
 def draw_ui(mouse_pos):
     clear_screen(screen)
     draw_header(screen, "DSA Explorer", fonts)
@@ -72,6 +103,7 @@ def draw_ui(mouse_pos):
     draw_status(screen, "Choose a module to start learning.", fonts["small"])
 
 
+# Main loop
 running = True
 
 while running:
@@ -82,9 +114,9 @@ while running:
         if event.type == pygame.QUIT:
             running = False
 
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            for phase in card_rects:
-                for name, desc, icon, func, rect in card_rects[phase]:
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            for cards in card_rects.values():
+                for name, desc, icon, func, rect in cards:
                     if rect.collidepoint(event.pos):
                         func(screen, clock)
 
