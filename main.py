@@ -32,28 +32,14 @@ MODULES = {
     ],
 }
 
-PHASE_COLOURS = {
-    "Phase 1": (90, 150, 255),
-    "Phase 2": (34, 160, 90),
-    "Phase 3": (170, 120, 255),
-}
-
-COL_COUNT = 3
-SIDE_PAD = 36
-COL_GAP = 22
-
-usable_width = WIDTH - (SIDE_PAD * 2) - (COL_GAP * (COL_COUNT - 1))
-COL_W = usable_width // COL_COUNT
-
-SEC_H = 42
-CARD_H = 150
-CARD_GAP = 16
+usable_width = WIDTH - (MENU_SIDE_PAD * 2) - (MENU_COL_GAP * (MENU_COL_COUNT - 1))
+COL_W = usable_width // MENU_COL_COUNT
 
 CONTENT_TOP = HEADER_H + 42
 
 
 def col_left(index):
-    return SIDE_PAD + index * (COL_W + COL_GAP)
+    return MENU_SIDE_PAD + index * (COL_W + MENU_COL_GAP)
 
 
 card_rects = {}
@@ -63,90 +49,9 @@ for col_index, (phase, items) in enumerate(MODULES.items()):
     card_rects[phase] = []
 
     for row_index, (name, desc, icon, func) in enumerate(items):
-        y = CONTENT_TOP + SEC_H + 14 + row_index * (CARD_H + CARD_GAP)
-        rect = pygame.Rect(x, y, COL_W, CARD_H)
+        y = CONTENT_TOP + MENU_SEC_H + 14 + row_index * (MENU_CARD_H + MENU_CARD_GAP)
+        rect = pygame.Rect(x, y, COL_W, MENU_CARD_H)
         card_rects[phase].append((name, desc, icon, func, rect))
-
-
-def draw_shadow(rect):
-    shadow = pygame.Rect(rect.x + 3, rect.y + 4, rect.w, rect.h)
-    pygame.draw.rect(screen, (215, 215, 215), shadow, border_radius=16)
-
-
-def draw_section_label(x, y, label, colour):
-    pill = pygame.Rect(x, y, COL_W, SEC_H)
-
-    pygame.draw.rect(screen, SURFACE_0, pill, border_radius=18)
-    pygame.draw.rect(screen, BORDER_SUBTLE, pill, 1, border_radius=18)
-
-    dot = pygame.Rect(pill.x + 18, pill.centery - 5, 10, 10)
-    pygame.draw.ellipse(screen, colour, dot)
-
-    draw_text(
-        screen,
-        label,
-        pill.centerx,
-        pill.centery,
-        fonts["heading"],
-        TEXT_1,
-        centre=True
-    )
-
-
-def draw_card(name, desc, icon, rect, colour, mouse_pos):
-    hover = rect.collidepoint(mouse_pos)
-
-    draw_shadow(rect)
-
-    fill = (255, 255, 255) if not hover else (248, 250, 255)
-    border = colour if hover else BORDER_SUBTLE
-
-    pygame.draw.rect(screen, fill, rect, border_radius=16)
-    pygame.draw.rect(screen, border, rect, 2 if hover else 1, border_radius=16)
-
-    icon_box = pygame.Rect(rect.centerx - 23, rect.y + 24, 46, 46)
-    pygame.draw.rect(screen, colour, icon_box, border_radius=14)
-
-    draw_text(
-        screen,
-        icon,
-        icon_box.centerx,
-        icon_box.centery,
-        fonts["heading"],
-        WHITE,
-        centre=True
-    )
-
-    draw_text(
-        screen,
-        name,
-        rect.centerx,
-        rect.y + 88,
-        fonts["heading"],
-        TEXT_1,
-        centre=True
-    )
-
-    draw_text(
-        screen,
-        desc,
-        rect.centerx,
-        rect.y + 116,
-        fonts["small"],
-        TEXT_3,
-        centre=True
-    )
-
-    if hover:
-        draw_text(
-            screen,
-            "›",
-            rect.right - 30,
-            rect.centery,
-            fonts["title"],
-            colour,
-            centre=True
-        )
 
 
 def draw_cards(mouse_pos):
@@ -154,19 +59,16 @@ def draw_cards(mouse_pos):
         x = col_left(col_index)
         colour = PHASE_COLOURS[phase]
 
-        draw_section_label(x, CONTENT_TOP, phase, colour)
+        draw_menu_section_label(screen, x, CONTENT_TOP, COL_W, phase, colour, fonts)
 
         for name, desc, icon, func, rect in card_rects[phase]:
-            draw_card(name, desc, icon, rect, colour, mouse_pos)
+            draw_menu_card(screen, name, desc, icon, rect, colour, mouse_pos, fonts)
 
 
 def draw_ui(mouse_pos):
     clear_screen(screen)
-
     draw_header(screen, "DSA Explorer", fonts)
-
     draw_cards(mouse_pos)
-
     draw_status(screen, "Choose a module to start learning.", fonts["small"])
 
 
