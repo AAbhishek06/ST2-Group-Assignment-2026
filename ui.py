@@ -7,8 +7,8 @@ pygame.init()
 WIDTH, HEIGHT, FPS = 1100, 720, 60
 
 # Background colours
-BG_TOP = (248, 248, 248)
-BG_BOTTOM = (236, 236, 236)
+BG_TOP = (242, 247, 255)
+BG_BOTTOM = (228, 238, 252)
 
 # Surface colours
 SURFACE_0 = (255, 255, 255)
@@ -43,7 +43,7 @@ BTN_GHOST_HOVER = (240, 240, 240)
 
 # Node colours
 NODE_BG = (255, 255, 255)
-NODE_BG_HIGHLIGHT = (255, 242, 242)
+NODE_BG_HIGHLIGHT = (248, 248, 248)
 NODE_BORDER = (210, 210, 210)
 NODE_BORDER_HIGHLIGHT = ACCENT
 
@@ -232,7 +232,7 @@ def draw_button(screen, rect, text, font, mouse_pos=None, active=True, style="ne
 
 # Back button
 def draw_back_button(screen, font, mouse_pos=None):
-    rect = pygame.Rect(20, HEADER_H + 16, 110, 38)
+    rect = pygame.Rect(28, HEADER_H + 20, 110, 38)
     draw_button(screen, rect, "Return to Menu", font, mouse_pos, style="danger")
     return rect
 
