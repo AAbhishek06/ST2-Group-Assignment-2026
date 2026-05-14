@@ -24,7 +24,7 @@ BORDER_SUBTLE = (222, 222, 222)
 BORDER_DEFAULT = (200, 200, 200)
 BORDER_STRONG = (175, 175, 175)
 
-ACCENT = (255, 0, 0)
+ACCENT = (90, 150, 255)
 ACCENT_SOFT = (220, 35, 35)
 ACCENT_HOVER = (255, 50, 50)
 
@@ -487,7 +487,7 @@ def draw_back_button(
     draw_button(
         screen,
         rect,
-        "← Back",
+        "Return to Menu",
         font,
         mouse_pos,
         style="danger"
@@ -726,3 +726,173 @@ def draw_arrow(
             right
         ]
     )
+
+# ─────────────────────────────────────────────────────────────────
+# MENU STYLE
+# ─────────────────────────────────────────────────────────────────
+PHASE_COLOURS = {
+    "Phase 1": (90, 150, 255),
+    "Phase 2": (34, 160, 90),
+    "Phase 3": (170, 120, 255),
+}
+
+MENU_COL_COUNT = 3
+MENU_SIDE_PAD = 36
+MENU_COL_GAP = 22
+
+MENU_SEC_H = 42
+MENU_CARD_H = 150
+MENU_CARD_GAP = 16
+
+MENU_CARD_RADIUS = 16
+MENU_SECTION_RADIUS = 18
+MENU_ICON_RADIUS = 14
+
+MENU_SHADOW_COLOUR = (215, 215, 215)
+MENU_CARD_FILL = (255, 255, 255)
+MENU_CARD_HOVER_FILL = (248, 250, 255)
+
+# ─────────────────────────────────────────────────────────────────
+# MENU CARDS
+# ─────────────────────────────────────────────────────────────────
+def draw_menu_shadow(screen, rect):
+    shadow = pygame.Rect(
+        rect.x + 3,
+        rect.y + 4,
+        rect.w,
+        rect.h
+    )
+
+    pygame.draw.rect(
+        screen,
+        MENU_SHADOW_COLOUR,
+        shadow,
+        border_radius=MENU_CARD_RADIUS
+    )
+
+
+def draw_menu_section_label(screen, x, y, width, label, colour, fonts):
+    pill = pygame.Rect(
+        x,
+        y,
+        width,
+        MENU_SEC_H
+    )
+
+    pygame.draw.rect(
+        screen,
+        SURFACE_0,
+        pill,
+        border_radius=MENU_SECTION_RADIUS
+    )
+
+    pygame.draw.rect(
+        screen,
+        BORDER_SUBTLE,
+        pill,
+        1,
+        border_radius=MENU_SECTION_RADIUS
+    )
+
+    dot = pygame.Rect(
+        pill.x + 18,
+        pill.centery - 5,
+        10,
+        10
+    )
+
+    pygame.draw.ellipse(
+        screen,
+        colour,
+        dot
+    )
+
+    draw_text(
+        screen,
+        label,
+        pill.centerx,
+        pill.centery,
+        fonts["heading"],
+        TEXT_1,
+        centre=True
+    )
+
+
+def draw_menu_card(screen, name, desc, icon, rect, colour, mouse_pos, fonts):
+    hover = rect.collidepoint(mouse_pos)
+
+    draw_menu_shadow(screen, rect)
+
+    fill = MENU_CARD_HOVER_FILL if hover else MENU_CARD_FILL
+    border = colour if hover else BORDER_SUBTLE
+    border_width = 2 if hover else 1
+
+    pygame.draw.rect(
+        screen,
+        fill,
+        rect,
+        border_radius=MENU_CARD_RADIUS
+    )
+
+    pygame.draw.rect(
+        screen,
+        border,
+        rect,
+        border_width,
+        border_radius=MENU_CARD_RADIUS
+    )
+
+    icon_box = pygame.Rect(
+        rect.centerx - 23,
+        rect.y + 24,
+        46,
+        46
+    )
+
+    pygame.draw.rect(
+        screen,
+        colour,
+        icon_box,
+        border_radius=MENU_ICON_RADIUS
+    )
+
+    draw_text(
+        screen,
+        icon,
+        icon_box.centerx,
+        icon_box.centery,
+        fonts["heading"],
+        WHITE,
+        centre=True
+    )
+
+    draw_text(
+        screen,
+        name,
+        rect.centerx,
+        rect.y + 88,
+        fonts["heading"],
+        TEXT_1,
+        centre=True
+    )
+
+    draw_text(
+        screen,
+        desc,
+        rect.centerx,
+        rect.y + 116,
+        fonts["small"],
+        TEXT_3,
+        centre=True
+    )
+
+    if hover:
+        draw_text(
+            screen,
+            "›",
+            rect.right - 30,
+            rect.centery,
+            fonts["title"],
+            colour,
+            centre=True
+        )
