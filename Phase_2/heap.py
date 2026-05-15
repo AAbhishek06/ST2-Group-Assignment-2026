@@ -44,6 +44,12 @@ class HeapVisualiser:
 
         self.buttons = {}
 
+        self.test_mode = False
+        self.test_queue = []
+        self.test_values = []
+        self.test_last_action = 0
+        self.test_delay = 900
+
     def create_buttons(self):
         labels = ["Insert", "Extract", "Clear", "Recenter"]
 
@@ -98,17 +104,50 @@ class HeapVisualiser:
         self.animating = True
 
     def update_animation(self):
-        if not self.animating:
+        if self.animating:
+            if self.step_index < len(self.steps):
+                self.heap, self.highlight_a, self.highlight_b, self.status = self.steps[self.step_index]
+                self.step_index += 1
+            else:
+                self.animating = False
+                self.highlight_a = None
+                self.highlight_b = None
+                self.status = f"Heap size {len(self.heap)}"
+
+        self.run_test_flow()
+
+    def run_test_flow(self):
+        if not self.test_mode:
             return
 
-        if self.step_index < len(self.steps):
-            self.heap, self.highlight_a, self.highlight_b, self.status = self.steps[self.step_index]
-            self.step_index += 1
-        else:
-            self.animating = False
-            self.highlight_a = None
-            self.highlight_b = None
-            self.status = f"Heap size {len(self.heap)}"
+        if self.animating:
+            return
+
+        now = pygame.time.get_ticks()
+
+        if now - self.test_last_action < self.test_delay:
+            return
+
+        if not self.test_queue:
+            self.test_mode = False
+            self.status = "TEST COMPLETE"
+            return
+
+        action = self.test_queue.pop(0)
+
+        if action == "INSERT":
+            if self.test_values:
+                self.input_text = str(self.test_values.pop(0))
+                self.insert_value()
+
+        elif action == "EXTRACT":
+            self.extract_min()
+
+        elif action == "END":
+            self.test_mode = False
+            self.status = "TEST COMPLETE"
+
+        self.test_last_action = now
 
     def insert_value(self):
         if self.animating:
@@ -234,7 +273,6 @@ class HeapVisualiser:
 
         for label, rect in self.buttons.items():
             style = "neutral"
-
             if label == "Insert":
                 style = "start"
             if label == "Extract":
@@ -266,44 +304,60 @@ class HeapVisualiser:
 
             if left < len(self.heap):
                 lx, ly = self.world(*self.get_node_pos(left))
-                pygame.draw.line(screen, ui.BLACK, (sx, sy), (lx, ly), 2)
+                pygame.draw.line(screen, ui.BORDER_DEFAULT, (sx, sy), (lx, ly), 2)
 
             if right < len(self.heap):
                 rx, ry = self.world(*self.get_node_pos(right))
-                pygame.draw.line(screen, ui.BLACK, (sx, sy), (rx, ry), 2)
+                pygame.draw.line(screen, ui.BORDER_DEFAULT, (sx, sy), (rx, ry), 2)
 
         for i, val in enumerate(self.heap):
             x, y = self.get_node_pos(i)
             sx, sy = self.world(x, y)
 
-            colour = ui.YELLOW if i in (self.highlight_a, self.highlight_b) else ui.LIGHT_BLUE
+            highlight = i in (self.highlight_a, self.highlight_b)
 
-            pygame.draw.circle(screen, colour, (int(sx), int(sy)), 26)
-            pygame.draw.circle(screen, ui.BLACK, (int(sx), int(sy)), 26, 2)
-
-            ui.draw_text(
+            ui.draw_node_rect(
                 screen,
+                sx - ui.NODE_WIDTH // 2,
+                sy - ui.NODE_HEIGHT // 2,
                 str(val),
-                sx,
-                sy,
-                fonts["small"],
-                ui.BLACK,
-                centre=True
+                fonts["normal"],
+                highlight=highlight
             )
+
+    def run_tests(self):
+        if self.animating:
+            return
+
+        self.heap = []
+        self.clear_state()
+
+        self.test_mode = True
+        self.test_values = [5, 2, 9, 1, 7]
+        self.test_queue = [
+            "INSERT", "INSERT", "INSERT", "INSERT", "INSERT",
+            "EXTRACT", "EXTRACT",
+            "END"
+        ]
+        self.test_last_action = pygame.time.get_ticks()
+
+        self.status = "TEST RUNNING"
 
     def draw(self, screen, fonts, mouse):
         ui.clear_screen(screen)
 
+        self.draw_heap(screen, fonts)
+
         ui.draw_header(screen, "Heap Visualiser", fonts)
 
         self.draw_controls(screen, fonts, mouse)
-        self.draw_heap(screen, fonts)
-
         back = self.draw_back_button(screen, fonts["small"], mouse)
 
         ui.draw_status(screen, self.status, fonts["small"])
 
-        return back
+        test = ui.draw_test_button(screen, fonts["small"], mouse)
+
+        return back, test
 
 
 def run_heap(screen, clock):
@@ -324,7 +378,7 @@ def run_heap(screen, clock):
         mouse = pygame.mouse.get_pos()
 
         vis.update_animation()
-        back = vis.draw(screen, fonts, mouse)
+        back, test = vis.draw(screen, fonts, mouse)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -332,26 +386,18 @@ def run_heap(screen, clock):
 
             vis.handle_drag(event)
 
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    running = False
-
-                elif event.key == pygame.K_BACKSPACE:
-                    vis.input_text = vis.input_text[:-1]
-
-                elif event.key == pygame.K_RETURN:
-                    vis.insert_value()
-
-                elif event.unicode.isdigit() and len(vis.input_text) < 5:
-                    vis.input_text += event.unicode
-
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if back.collidepoint(event.pos):
                     running = False
-                else:
-                    for k, action in actions.items():
-                        if vis.buttons[k].collidepoint(event.pos):
-                            action()
+                    continue
+
+                if test.collidepoint(event.pos):
+                    vis.run_tests()
+                    continue
+
+                for k, action in actions.items():
+                    if vis.buttons[k].collidepoint(event.pos):
+                        action()
 
         pygame.display.flip()
         clock.tick(ui.FPS)
