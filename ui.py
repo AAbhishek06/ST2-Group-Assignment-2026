@@ -7,8 +7,8 @@ pygame.init()
 WIDTH, HEIGHT, FPS = 1100, 720, 60
 
 # Colours
-BG_TOP = (214, 232, 255)
-BG_BOTTOM = (0, 7, 69)
+BG_TOP = (242, 247, 255)
+BG_BOTTOM = (228, 238, 252)
 
 SURFACE_0 = (255, 255, 255)
 SURFACE_1 = (250, 250, 250)
