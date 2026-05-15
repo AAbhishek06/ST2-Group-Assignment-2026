@@ -198,7 +198,11 @@ class SortingVisualiser:
             return
 
         self.test_mode = True
-        self.test_queue = ["GEN", "ALGO", "GEN", "ALGO", "GEN", "ALGO"]
+        self.test_queue = [
+            "Bubble Sort",
+            "Selection Sort",
+            "Merge Sort"
+        ]
         self.test_last_action = pygame.time.get_ticks()
         self.status = "TEST RUNNING"
 
@@ -216,12 +220,9 @@ class SortingVisualiser:
             self.status = "TEST COMPLETE"
             return
 
-        action = self.test_queue.pop(0)
-
-        if action == "GEN":
-            self.auto_generate()
-        elif action == "ALGO":
-            self.start_sort()
+        self.algorithm = self.test_queue.pop(0)
+        self.auto_generate()
+        self.start_sort()
 
         self.test_last_action = now
 
@@ -252,7 +253,7 @@ class SortingVisualiser:
                 screen,
                 rect,
                 key.capitalize(),
-                fonts["small"],
+                fonts["normal"],
                 mouse,
                 style=button_styles.get(key, "neutral")
             )
@@ -293,7 +294,7 @@ class SortingVisualiser:
                 str(value),
                 bar.centerx,
                 y - 18,
-                fonts["small"],
+                fonts["normal"],
                 ui.BLACK,
                 centre=True
             )
@@ -308,8 +309,7 @@ class SortingVisualiser:
         ui.clear_screen(screen)
         ui.draw_header(screen, "Sorting Algorithms", fonts)
         self.draw_ui(screen, fonts, mouse)
-        ui.draw_status(screen, self.status, fonts["small"])
-
+        ui.draw_status(screen, self.status, fonts["normal"])
 
 # Main loop
 def run_sorting(screen, clock):
@@ -334,8 +334,8 @@ def run_sorting(screen, clock):
         vis.update_animation()
         vis.draw(screen, fonts, mouse)
 
-        back = ui.draw_back_button(screen, fonts["small"], mouse)
-        test = ui.draw_test_button(screen, fonts["small"], mouse)
+        back = ui.draw_back_button(screen, fonts["normal"], mouse)
+        test = ui.draw_test_button(screen, fonts["normal"], mouse)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
