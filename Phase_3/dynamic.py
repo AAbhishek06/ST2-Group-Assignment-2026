@@ -2,6 +2,7 @@ import pygame
 import sys
 import os
 import time
+import random
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -55,6 +56,11 @@ class DynamicProgrammingVisualiser:
 
         self.buttons = {}
 
+        self.test_mode = False
+        self.test_stage = None
+        self.test_last = 0
+        self.test_delay = 800
+
     def create_buttons(self):
 
         labels = ["Run", "Clear"]
@@ -107,7 +113,7 @@ class DynamicProgrammingVisualiser:
 
     def handle_click(self, pos):
 
-        if self.animating:
+        if self.animating or self.test_mode:
             return
 
         x, y = pos
@@ -130,14 +136,14 @@ class DynamicProgrammingVisualiser:
 
             self.start = cell
             self.grid[row][col] = "start"
-            self.status = "Start point set, add an End point"
+            self.status = "Start set"
             return
 
         if not self.end and cell != self.start:
 
             self.end = cell
             self.grid[row][col] = "end"
-            self.status = "End point set, add walls or press Run"
+            self.status = "End set"
             return
 
         if cell != self.start and cell != self.end:
@@ -150,7 +156,7 @@ class DynamicProgrammingVisualiser:
             return
 
         if not self.start or not self.end:
-            self.status = "Set start and end first"
+            self.status = "Set start and end"
             return
 
         self.start_time = time.time()
@@ -161,11 +167,7 @@ class DynamicProgrammingVisualiser:
         row_step = 1 if er >= sr else -1
         col_step = 1 if ec >= sc else -1
 
-        dp = [
-            [0 for _ in range(self.cols)]
-            for _ in range(self.rows)
-        ]
-
+        dp = [[0 for _ in range(self.cols)] for _ in range(self.rows)]
         dp[sr][sc] = 1
 
         for r in range(sr, er + row_step, row_step):
@@ -178,19 +180,10 @@ class DynamicProgrammingVisualiser:
                 if (r, c) == self.start:
                     continue
 
-                previous_row = r - row_step
-                previous_col = c - col_step
+                up = dp[r - row_step][c] if 0 <= r - row_step < self.rows else 0
+                left = dp[r][c - col_step] if 0 <= c - col_step < self.cols else 0
 
-                from_row = 0
-                from_col = 0
-
-                if 0 <= previous_row < self.rows:
-                    from_row = dp[previous_row][c]
-
-                if 0 <= previous_col < self.cols:
-                    from_col = dp[r][previous_col]
-
-                dp[r][c] = from_row + from_col
+                dp[r][c] = up + left
 
         self.dp = dp
         self.final_path = self.reconstruct_path(row_step, col_step)
@@ -198,12 +191,9 @@ class DynamicProgrammingVisualiser:
         elapsed = time.time() - self.start_time
 
         self.path = []
-        self.visited = set()
 
         if not self.final_path:
-            self.animating = False
-            self.animation_stage = None
-            self.status = "No DP path found"
+            self.status = "No path found"
             return
 
         self.animating = True
@@ -211,17 +201,11 @@ class DynamicProgrammingVisualiser:
         self.step_index = 0
         self.last_step_time = pygame.time.get_ticks()
 
-        er, ec = self.end
-        path_count = self.dp[er][ec]
-
-        self.status = f"DP complete: {path_count} path(s), {elapsed:.2f}s"
+        self.status = f"DP done in {elapsed:.2f}s"
 
     def reconstruct_path(self, row_step, col_step):
 
         if not self.start or not self.end:
-            return []
-
-        if not hasattr(self, "dp"):
             return []
 
         sr, sc = self.start
@@ -244,10 +228,8 @@ class DynamicProgrammingVisualiser:
             can_left = 0 <= left_c < self.cols and self.dp[r][left_c] > 0
 
             if can_up and can_left:
-                if self.dp[up_r][c] >= self.dp[r][left_c]:
-                    r = up_r
-                else:
-                    c = left_c
+                r = up_r if self.dp[up_r][c] >= self.dp[r][left_c] else r
+                c = c if r == up_r else left_c
             elif can_up:
                 r = up_r
             elif can_left:
@@ -262,33 +244,81 @@ class DynamicProgrammingVisualiser:
 
     def update_animation(self):
 
-        if not self.animating:
+        if self.animating:
+
+            now = pygame.time.get_ticks()
+
+            if now - self.last_step_time >= self.step_delay:
+
+                self.last_step_time = now
+
+                if self.step_index < len(self.final_path):
+
+                    cell = self.final_path[self.step_index]
+
+                    if cell != self.start and cell != self.end:
+                        self.path.append(cell)
+
+                    self.step_index += 1
+
+                else:
+
+                    self.animating = False
+                    self.animation_stage = None
+                    self.status = "Complete"
+
+        if self.test_mode:
+            self.run_test()
+
+    def start_test(self):
+
+        if self.animating:
             return
+
+        self.clear()
+
+        self.test_mode = True
+        self.test_stage = "init"
+        self.test_last = pygame.time.get_ticks()
+
+        self.status = "Test started"
+
+    def run_test(self):
 
         now = pygame.time.get_ticks()
 
-        if now - self.last_step_time < self.step_delay:
+        if now - self.test_last < self.test_delay:
             return
 
-        self.last_step_time = now
+        self.test_last = now
 
-        if self.animation_stage == "path":
+        if self.test_stage == "init":
 
-            if self.step_index < len(self.final_path):
+            sr = random.randint(0, self.rows - 1)
+            sc = random.randint(0, self.cols - 1)
+            er = random.randint(0, self.rows - 1)
+            ec = random.randint(0, self.cols - 1)
 
-                cell = self.final_path[self.step_index]
+            self.start = (sr, sc)
+            self.end = (er, ec)
 
-                if cell != self.start and cell != self.end:
-                    self.path.append(cell)
+            self.grid[sr][sc] = "start"
+            self.grid[er][ec] = "end"
 
-                self.step_index += 1
+            self.test_stage = "run"
+            self.status = "Test running"
 
-            else:
+            self.run_dp()
+            return
 
-                self.animating = False
-                self.animation_stage = None
+        if self.test_stage == "run":
 
-                self.status = f"Path found: {len(self.final_path)} steps"
+            if self.animating:
+                return
+
+            self.test_stage = "done"
+            self.test_mode = False
+            self.status = "Test complete"
 
     def draw_controls(self, screen, fonts, mouse):
 
@@ -296,7 +326,7 @@ class DynamicProgrammingVisualiser:
 
         ui.draw_text(
             screen,
-            "Visualise a grid based pathfinding system with dynamic programming.",
+            "Visualise grid pathfinding",
             self.controls_panel.centerx,
             self.controls_panel.y + 28,
             fonts["heading"],
@@ -313,14 +343,7 @@ class DynamicProgrammingVisualiser:
             elif key == "clear":
                 style = "danger"
 
-            ui.draw_button(
-                screen,
-                rect,
-                key.capitalize(),
-                fonts["small"],
-                mouse,
-                style=style
-            )
+            ui.draw_button(screen, rect, key.capitalize(), fonts["small"], mouse, style=style)
 
     def draw_grid(self, screen, fonts):
 
@@ -346,18 +369,16 @@ class DynamicProgrammingVisualiser:
                 pygame.draw.rect(screen, colour, rect)
                 pygame.draw.rect(screen, ui.BLACK, rect, 1)
 
-                if self.dp is not None:
-                    val = self.dp[r][c]
-                    if val > 0:
-                        ui.draw_text(
-                            screen,
-                            str(val),
-                            x + self.cell_size // 2,
-                            y + self.cell_size // 2,
-                            fonts["small"],
-                            ui.BLACK,
-                            centre=True
-                        )
+                if self.dp is not None and self.dp[r][c] > 0:
+                    ui.draw_text(
+                        screen,
+                        str(self.dp[r][c]),
+                        x + self.cell_size // 2,
+                        y + self.cell_size // 2,
+                        fonts["small"],
+                        ui.BLACK,
+                        centre=True
+                    )
 
     def draw(self, screen, fonts, mouse):
 
@@ -368,11 +389,7 @@ class DynamicProgrammingVisualiser:
         self.draw_controls(screen, fonts, mouse)
         self.draw_grid(screen, fonts)
 
-        ui.draw_status(
-            screen,
-            self.status,
-            fonts["small"]
-        )
+        ui.draw_status(screen, self.status, fonts["small"])
 
 
 def run_dynamic(screen, clock):
@@ -385,6 +402,7 @@ def run_dynamic(screen, clock):
     actions = {
         "run": vis.run_dp,
         "clear": vis.clear,
+        "test": vis.start_test
     }
 
     running = True
@@ -397,6 +415,7 @@ def run_dynamic(screen, clock):
         vis.draw(screen, fonts, mouse)
 
         back = ui.draw_back_button(screen, fonts["small"], mouse)
+        test = ui.draw_test_button(screen, fonts["small"], mouse)
 
         for event in pygame.event.get():
 
@@ -411,14 +430,18 @@ def run_dynamic(screen, clock):
 
                 if back.collidepoint(event.pos):
                     running = False
+                    continue
 
-                else:
-                    for key, rect in vis.buttons.items():
-                        if rect.collidepoint(event.pos):
-                            actions[key]()
-                            break
+                if test.collidepoint(event.pos):
+                    vis.start_test()
+                    continue
 
-                    vis.handle_click(event.pos)
+                for key, rect in vis.buttons.items():
+                    if rect.collidepoint(event.pos):
+                        actions[key]()
+                        break
+
+                vis.handle_click(event.pos)
 
         pygame.display.flip()
         clock.tick(ui.FPS)
