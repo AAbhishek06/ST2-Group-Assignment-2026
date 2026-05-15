@@ -6,11 +6,12 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import ui
 
-# Classes
+
 class Node:
     def __init__(self, data):
         self.data = data
         self.next = None
+
 
 class SingleLinkedList:
     def __init__(self):
@@ -62,7 +63,6 @@ class SingleLinkedList:
         while current:
             if str(current.data) == str(value):
                 return index
-
             current = current.next
             index += 1
 
@@ -93,6 +93,7 @@ class SingleLinkedList:
     def clear(self):
         self.head = None
 
+
 class LinkedListVisualiser:
     def __init__(self):
         self.list = SingleLinkedList()
@@ -113,7 +114,11 @@ class LinkedListVisualiser:
         self.controls_panel = pygame.Rect(24, ui.HEADER_H + 16, ui.WIDTH - 48, 150)
         self.buttons = {}
 
-    # Buttons
+        self.test_button_rect = None
+        self.test_active = False
+        self.test_step = 0
+        self.test_timer = 0
+
     def create_buttons(self):
         labels = ["Insert", "Delete", "Search", "Reverse", "Clear"]
         button_width = 130
@@ -127,7 +132,6 @@ class LinkedListVisualiser:
             for i, label in enumerate(labels)
         }
 
-    # Dragging
     def clamp_camera(self):
         self.camera.x = max(-self.cam_limit_x, min(self.cam_limit_x, self.camera.x))
         self.camera.y = max(-self.cam_limit_y, min(self.cam_limit_y, self.camera.y))
@@ -146,14 +150,12 @@ class LinkedListVisualiser:
             self.last_mouse = current
             self.clamp_camera()
 
-    # Input actions
     def handle_input_click(self, pos):
         if self.input_rect.collidepoint(pos):
             self.active_box = "value"
         elif self.index_rect.collidepoint(pos):
             self.active_box = "index"
 
-    # List actions
     def insert_node(self):
         if not self.value_text:
             self.status = "Enter value"
@@ -212,7 +214,66 @@ class LinkedListVisualiser:
         self.highlight_index = None
         self.status = "Cleared"
 
-    # Input drawing
+    def start_test(self):
+        self.list.clear()
+
+        self.test_active = True
+        self.test_step = 0
+        self.test_timer = 0
+
+        self.status = "Test running"
+
+    def run_test(self):
+        if not self.test_active:
+            return
+
+        now = pygame.time.get_ticks()
+        if now - self.test_timer < 650:
+            return
+
+        self.test_timer = now
+
+        if self.test_step == 0:
+            self.list.clear()
+            self.status = "Reset"
+
+        elif self.test_step == 1:
+            self.list.insert_at_index("10", 0)
+            self.list.insert_at_index("20", 1)
+            self.list.insert_at_index("30", 2)
+            self.list.insert_at_index("40", 3)
+            self.list.insert_at_index("50", 4)
+            self.status = "Inserted 5 nodes"
+
+        elif self.test_step == 2:
+            self.status = "Check insert " + str(self.list.to_list())
+
+        elif self.test_step == 3:
+            self.list.reverse()
+            self.status = "Reversed"
+
+        elif self.test_step == 4:
+            self.status = "After reverse " + str(self.list.to_list())
+
+        elif self.test_step == 5:
+            self.highlight_index = self.list.search("30")
+            self.status = "Search 30 index " + str(self.highlight_index)
+
+        elif self.test_step == 6:
+            expected_insert = ["10", "20", "30", "40", "50"]
+            expected_reverse = ["50", "40", "30", "20", "10"]
+
+            actual_insert = self.list.to_list()
+
+            if actual_insert == expected_reverse and self.highlight_index != -1:
+                self.status = "Test complete"
+            else:
+                self.status = "FAIL " + str(actual_insert)
+
+            self.test_active = False
+
+        self.test_step += 1
+
     def draw_inputs(self, screen, fonts, mouse):
         inputs = [
             ("INSERT VALUE", self.input_rect, self.value_text, "value"),
@@ -231,7 +292,6 @@ class LinkedListVisualiser:
                 mouse_pos=mouse
             )
 
-    # List drawing
     def draw_list(self, screen, fonts):
         values = self.list.to_list()
 
@@ -291,18 +351,20 @@ class LinkedListVisualiser:
             style = button_styles.get(label, "neutral")
             ui.draw_button(screen, rect, label, fonts["small"], mouse, style=style)
 
-    # Screen drawing
+        self.test_button_rect = ui.draw_test_button(screen, fonts["small"], mouse)
+
     def draw(self, screen, fonts, mouse):
         ui.clear_screen(screen)
         self.draw_list(screen, fonts)
         ui.draw_header(screen, "Linked List", fonts)
         self.draw_controls(screen, fonts, mouse)
+
         back = ui.draw_back_button(screen, fonts["small"], mouse)
         ui.draw_status(screen, self.status, fonts["small"])
+
         return back
 
 
-# Main loop
 def run_linked_list(screen, clock):
     fonts = ui.create_fonts()
     vis = LinkedListVisualiser()
@@ -320,6 +382,9 @@ def run_linked_list(screen, clock):
 
     while running:
         mouse = pygame.mouse.get_pos()
+
+        vis.run_test()
+
         back = vis.draw(screen, fonts, mouse)
 
         for event in pygame.event.get():
@@ -351,6 +416,9 @@ def run_linked_list(screen, clock):
                         vis.index_text += event.unicode
 
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if vis.test_button_rect and vis.test_button_rect.collidepoint(event.pos):
+                    vis.start_test()
+
                 if back.collidepoint(event.pos):
                     running = False
                 else:
@@ -362,6 +430,7 @@ def run_linked_list(screen, clock):
 
         pygame.display.flip()
         clock.tick(ui.FPS)
+
 
 if __name__ == "__main__":
     pygame.init()
