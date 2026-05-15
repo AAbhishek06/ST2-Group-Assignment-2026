@@ -1,4 +1,4 @@
-# Imports
+#ui.py
 import pygame
 
 pygame.init()
@@ -7,8 +7,6 @@ pygame.init()
 WIDTH, HEIGHT, FPS = 1100, 720, 60
 
 # Background colours
-# Softer modern blue to red gradient
-
 BG_TOP = (214, 232, 255)
 BG_BOTTOM = (0, 7, 69)
 
@@ -237,6 +235,13 @@ def draw_back_button(screen, font, mouse_pos=None):
     draw_button(screen, rect, "Return to Menu", font, mouse_pos, style="danger")
     return rect
 
+# Run test button
+def draw_test_button(screen, font, mouse_pos=None):
+    width = screen.get_width()
+    rect = pygame.Rect(width - 138, HEADER_H + 20, 110, 38)
+    draw_button(screen, rect, "Run Test", font, mouse_pos, style="start")
+    return rect
+
 # Input box
 def draw_input_box(screen, rect, text, font, active=False, mouse_pos=None):
     hover = bool(mouse_pos and rect.collidepoint(mouse_pos))
@@ -308,7 +313,6 @@ def draw_arrow(screen, start_pos, end_pos, colour=BORDER_DEFAULT, width=2):
     right = tip + direction.rotate(-28) * 10
 
     pygame.draw.polygon(screen, colour, [(x2, y2), left, right])
-
 
 # Menu section
 def draw_menu_section_label(screen, x, y, width, label, colour, fonts):
