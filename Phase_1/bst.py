@@ -66,6 +66,8 @@ class BSTVisualiser:
     def __init__(self):
         self.tree = BinarySearchTree()
         self.input_text = ""
+        self.input_active = False
+
         self.status = "Ready"
         self.traversal = ""
         self.highlight = None
@@ -80,6 +82,14 @@ class BSTVisualiser:
         self.input_rect = pygame.Rect(ui.WIDTH // 2 - 170, ui.HEADER_H + 56, 340, 46)
         self.controls_panel = pygame.Rect(24, ui.HEADER_H + 16, ui.WIDTH - 48, 150)
         self.buttons = {}
+
+        self._test_active = False
+        self._test_values = []
+        self._test_index = 0
+        self._test_timer = 0
+        self._test_delay = 700
+        self._test_phase = "insert"
+        self._test_log = []
 
     def create_buttons(self):
         labels = ["Insert", "Inorder", "Preorder", "Postorder", "Clear", "Recenter"]
@@ -136,6 +146,61 @@ class BSTVisualiser:
         self.camera = pygame.Vector2(0, 0)
         self.status = "Recentered"
 
+    def bst_test(self):
+        self.tree.clear()
+
+        self.input_text = ""
+        self.traversal = ""
+        self.highlight = None
+
+        self._test_active = True
+        self._test_values = [50, 30, 70, 20, 40, 60, 80]
+        self._test_index = 0
+        self._test_timer = pygame.time.get_ticks()
+        self._test_phase = "insert"
+        self._test_log = []
+
+        self.status = "Test started"
+
+    def update_test(self):
+        if not self._test_active:
+            return
+
+        now = pygame.time.get_ticks()
+
+        if now - self._test_timer < self._test_delay:
+            return
+
+        self._test_timer = now
+
+        if self._test_phase == "insert":
+            if self._test_index < len(self._test_values):
+                value = self._test_values[self._test_index]
+                self.tree.insert(value)
+                self.highlight = value
+                self._test_log.append(value)
+                self.status = f"Inserted {value}"
+                self._test_index += 1
+                return
+
+            self._test_phase = "verify"
+            self._test_index = 0
+            return
+
+        if self._test_phase == "verify":
+            inorder = self.tree.traverse("in")
+            self.traversal = str(inorder)
+
+            expected = sorted(self._test_values)
+
+            if inorder == expected:
+                self.status = f"PASS inorder {inorder}"
+            else:
+                self.status = f"FAIL expected {expected} got {inorder}"
+
+            self._test_phase = "done"
+            self._test_active = False
+
     def clamp_camera(self):
         self.camera.x = max(-self.cam_limit_x, min(self.cam_limit_x, self.camera.x))
         self.camera.y = max(-self.cam_limit_y, min(self.cam_limit_y, self.camera.y))
@@ -166,24 +231,19 @@ class BSTVisualiser:
             highlight=(node.data == self.highlight)
         )
 
-        children = [
-            (node.left, x - gap),
-            (node.right, x + gap),
-        ]
-
-        for child, child_x in children:
+        for child, cx in [(node.left, x - gap), (node.right, x + gap)]:
             if child:
-                cx, cy = self.world(child_x, y + 100)
+                px, py = self.world(cx, y + 100)
 
                 ui.draw_arrow(
                     screen,
                     (sx, sy + ui.NODE_HEIGHT // 2),
-                    (cx, cy - ui.NODE_HEIGHT // 2),
+                    (px, py - ui.NODE_HEIGHT // 2),
                     ui.BORDER_DEFAULT,
                     2
                 )
 
-                self.draw_node(screen, fonts, child, child_x, y + 100, max(gap // 2, 70))
+                self.draw_node(screen, fonts, child, cx, y + 100, max(gap // 2, 70))
 
     def draw_tree(self, screen, fonts):
         if self.tree.root is None:
@@ -216,7 +276,7 @@ class BSTVisualiser:
             self.input_rect,
             self.input_text,
             fonts["normal"],
-            active=False,
+            active=self.input_active,
             mouse_pos=mouse
         )
 
@@ -261,9 +321,11 @@ class BSTVisualiser:
         self.draw_traversal(screen, fonts)
 
         back = ui.draw_back_button(screen, fonts["small"], mouse)
+        test = ui.draw_test_button(screen, fonts["small"], mouse)
+
         ui.draw_status(screen, self.status, fonts["small"])
 
-        return back
+        return back, test
 
 
 def run_bst(screen, clock):
@@ -278,13 +340,16 @@ def run_bst(screen, clock):
         "Postorder": lambda: vis.show("post"),
         "Clear": vis.clear_all,
         "Recenter": vis.reset_view,
+        "Run Test": vis.bst_test
     }
 
     running = True
 
     while running:
         mouse = pygame.mouse.get_pos()
-        back = vis.draw(screen, fonts, mouse)
+        back, test = vis.draw(screen, fonts, mouse)
+
+        vis.update_test()
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -292,23 +357,37 @@ def run_bst(screen, clock):
 
             vis.handle_drag(event)
 
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    running = False
-                elif event.key == pygame.K_BACKSPACE:
-                    vis.input_text = vis.input_text[:-1]
-                elif event.key == pygame.K_RETURN:
-                    vis.insert_node()
-                elif event.unicode.isdigit():
-                    vis.input_text += event.unicode
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
 
-            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if back.collidepoint(event.pos):
                     running = False
-                else:
-                    for label, rect in vis.buttons.items():
-                        if rect.collidepoint(event.pos):
-                            actions[label]()
+                    continue
+
+                if test.collidepoint(event.pos):
+                    vis.bst_test()
+                    continue
+
+                vis.input_active = vis.input_rect.collidepoint(event.pos)
+
+                if vis.input_active:
+                    continue
+
+                for label, rect in vis.buttons.items():
+                    if rect.collidepoint(event.pos):
+                        actions[label]()
+
+            if event.type == pygame.KEYDOWN:
+
+                if vis.input_active:
+
+                    if event.key == pygame.K_BACKSPACE:
+                        vis.input_text = vis.input_text[:-1]
+
+                    elif event.key == pygame.K_RETURN:
+                        vis.insert_node()
+
+                    elif event.unicode.isdigit():
+                        vis.input_text += event.unicode
 
         pygame.display.flip()
         clock.tick(ui.FPS)
