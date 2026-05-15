@@ -265,7 +265,7 @@ def draw_node_rect(screen, x, y, value, font, highlight=False):
     if highlight:
         pygame.draw.rect(screen, ACCENT, (x + 2, y, NODE_WIDTH - 4, 3), border_radius=2)
 
-    draw_text(screen, value, rect.centerx, rect.centery, font, TEXT_1, centre=True)
+    draw_text(screen, value, rect.centerx, rect.centery, font, BLACK, centre=True)
     return rect
 
 
