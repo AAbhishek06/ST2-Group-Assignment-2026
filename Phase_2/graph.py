@@ -68,6 +68,11 @@ class GraphVisualiser:
 
         self.buttons = {}
 
+        self.test_mode = False
+        self.test_steps = []
+        self.test_index = 0
+        self.test_last = 0
+
     def center_graph(self):
         xs = [x for x, y in self.nodes.values()]
         ys = [y for x, y in self.nodes.values()]
@@ -142,14 +147,14 @@ class GraphVisualiser:
         self.status = "DFS running"
 
     def auto_update(self):
-        if not self.auto:
-            return
+        if self.auto:
+            now = pygame.time.get_ticks()
+            if now - self.last_step >= self.delay:
+                self.step()
+                self.last_step = now
 
-        now = pygame.time.get_ticks()
-
-        if now - self.last_step >= self.delay:
-            self.step()
-            self.last_step = now
+        if self.test_mode:
+            self._run_test_step()
 
     def step(self):
         if self.mode == "BFS":
@@ -195,15 +200,64 @@ class GraphVisualiser:
             if n not in self.visited and n not in self.stack:
                 self.stack.append(n)
 
+    def run_tests(self):
+        self.test_mode = True
+        self.test_steps = [
+            ("click_node", "D"),
+            ("click_button", "BFS"),
+            ("wait", 2500),
+            ("click_button", "RESET"),
+            ("click_node", "A"),
+            ("click_button", "DFS"),
+            ("wait", 2500),
+            ("end", None),
+        ]
+        self.test_index = 0
+        self.test_last = pygame.time.get_ticks()
+        self.status = "TEST RUNNING"
+
+    def _run_test_step(self):
+        if self.test_index >= len(self.test_steps):
+            self.test_mode = False
+            self.status = "TEST COMPLETE"
+            return
+
+        action, value = self.test_steps[self.test_index]
+
+        now = pygame.time.get_ticks()
+
+        if action == "wait":
+            if now - self.test_last < value:
+                return
+            self.test_last = now
+            self.test_index += 1
+            return
+
+        if action == "click_node":
+            self.set_start(value)
+
+        elif action == "click_button":
+            if value == "BFS":
+                self.start_bfs()
+            elif value == "DFS":
+                self.start_dfs()
+            elif value == "RESET":
+                self.reset()
+
+        elif action == "end":
+            self.test_mode = False
+            self.status = "TEST COMPLETE"
+            return
+
+        self.test_index += 1
+
     def draw_controls(self, screen, fonts, mouse):
         ui.draw_panel(screen, self.controls_panel)
 
         for label, rect in self.buttons.items():
             style = "neutral"
 
-            if label == "BFS":
-                style = "start"
-            if label == "DFS":
+            if label in ["BFS", "DFS"]:
                 style = "start"
             if label == "RESET":
                 style = "danger"
@@ -242,28 +296,6 @@ class GraphVisualiser:
     def draw_header(self, screen, fonts):
         ui.draw_header(screen, "Graph Traversal", fonts)
 
-        if self.start_node:
-            ui.draw_text(
-                screen,
-                f"Start {self.start_node}",
-                ui.WIDTH // 2,
-                95,
-                fonts["small"],
-                ui.TEXT_1,
-                centre=True
-            )
-
-        if self.mode:
-            ui.draw_text(
-                screen,
-                f"Mode {self.mode}",
-                ui.WIDTH // 2,
-                120,
-                fonts["small"],
-                ui.TEXT_1,
-                centre=True
-            )
-
     def draw_order(self, screen, fonts):
         if self.order:
             ui.draw_text(
@@ -272,7 +304,7 @@ class GraphVisualiser:
                 ui.WIDTH // 2,
                 ui.HEIGHT - 80,
                 fonts["small"],
-                ui.BLACK,
+                ui.WHITE,
                 centre=True
             )
 
@@ -289,6 +321,8 @@ class GraphVisualiser:
 
         ui.draw_status(screen, self.status, fonts["small"])
 
+        return ui.draw_test_button(screen, fonts["small"], mouse)
+
 
 def run_graph(screen, clock):
     fonts = ui.create_fonts()
@@ -301,7 +335,7 @@ def run_graph(screen, clock):
         mouse = pygame.mouse.get_pos()
 
         graph.auto_update()
-        graph.draw(screen, fonts, mouse)
+        test = graph.draw(screen, fonts, mouse)
 
         back = ui.draw_back_button(screen, fonts["small"], mouse)
 
@@ -316,6 +350,10 @@ def run_graph(screen, clock):
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if back.collidepoint(event.pos):
                     running = False
+                    continue
+
+                if test.collidepoint(event.pos):
+                    graph.run_tests()
                     continue
 
                 if graph.buttons["BFS"].collidepoint(event.pos):
