@@ -109,6 +109,9 @@ class DynamicProgrammingVisualiser:
 
         self.dp = None
 
+        self.test_mode = False
+        self.test_stage = None
+
         self.status = "Grid cleared"
 
     def handle_click(self, pos):
@@ -228,8 +231,10 @@ class DynamicProgrammingVisualiser:
             can_left = 0 <= left_c < self.cols and self.dp[r][left_c] > 0
 
             if can_up and can_left:
-                r = up_r if self.dp[up_r][c] >= self.dp[r][left_c] else r
-                c = c if r == up_r else left_c
+                if self.dp[up_r][c] >= self.dp[r][left_c]:
+                    r = up_r
+                else:
+                    c = left_c
             elif can_up:
                 r = up_r
             elif can_left:
@@ -268,7 +273,7 @@ class DynamicProgrammingVisualiser:
                     self.status = "Complete"
 
         if self.test_mode:
-            self.run_test()
+            self.update_test()
 
     def start_test(self):
 
@@ -283,21 +288,30 @@ class DynamicProgrammingVisualiser:
 
         self.status = "Test started"
 
-    def run_test(self):
+    def update_test(self):
+
+        if not self.test_mode:
+            return
 
         now = pygame.time.get_ticks()
 
-        if now - self.test_last < self.test_delay:
-            return
-
-        self.test_last = now
-
         if self.test_stage == "init":
+
+            if now - self.test_last < self.test_delay:
+                return
+
+            self.test_last = now
+
+            self.clear()
 
             sr = random.randint(0, self.rows - 1)
             sc = random.randint(0, self.cols - 1)
             er = random.randint(0, self.rows - 1)
             ec = random.randint(0, self.cols - 1)
+
+            while (er, ec) == (sr, sc):
+                er = random.randint(0, self.rows - 1)
+                ec = random.randint(0, self.cols - 1)
 
             self.start = (sr, sc)
             self.end = (er, ec)
@@ -305,9 +319,14 @@ class DynamicProgrammingVisualiser:
             self.grid[sr][sc] = "start"
             self.grid[er][ec] = "end"
 
-            self.test_stage = "run"
-            self.status = "Test running"
+            for _ in range(60):
+                r = random.randint(0, self.rows - 1)
+                c = random.randint(0, self.cols - 1)
 
+                if (r, c) != self.start and (r, c) != self.end:
+                    self.grid[r][c] = "wall"
+
+            self.test_stage = "run"
             self.run_dp()
             return
 
@@ -412,6 +431,7 @@ def run_dynamic(screen, clock):
         mouse = pygame.mouse.get_pos()
 
         vis.update_animation()
+        vis.update_test()
         vis.draw(screen, fonts, mouse)
 
         back = ui.draw_back_button(screen, fonts["small"], mouse)
