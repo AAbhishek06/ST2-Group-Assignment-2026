@@ -149,7 +149,7 @@ class BSTVisualiser:
         self.reset_visual_state()
 
         self._test_active = True
-        self._test_values = [50, 30, 70, 20, 40, 60, 80]
+        self._test_values = [50, 30, 70]
         self._test_index = 0
         self._test_timer = pygame.time.get_ticks()
         self._test_phase = "insert"
