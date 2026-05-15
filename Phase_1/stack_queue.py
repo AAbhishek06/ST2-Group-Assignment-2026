@@ -7,6 +7,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import ui
 
+
 class StackQueueVisualiser:
     def __init__(self):
         self.stack = []
@@ -30,6 +31,13 @@ class StackQueueVisualiser:
         self.queue_panel = pygame.Rect(560, 260, 380, 360)
 
         self.buttons = {}
+
+        self.test_button = pygame.Rect(ui.WIDTH - 150, ui.HEADER_H + 20, 120, 38)
+
+        self.test_mode = False
+        self.test_steps = []
+        self.test_index = 0
+        self.last_test_time = 0
 
     def create_buttons(self):
         labels = ["Push", "Pop", "Clear", "Enqueue", "Dequeue"]
@@ -104,6 +112,67 @@ class StackQueueVisualiser:
         self.queue_scroll = 0
         self.status = "Cleared"
 
+    def run_test(self):
+        self.clear_all()
+
+        self.test_mode = True
+        self.test_index = 0
+        self.last_test_time = pygame.time.get_ticks()
+
+        self.test_steps = [
+            ("stack_push", 3),
+            ("stack_push", 7),
+            ("stack_push", 9),
+            ("stack_pop", None),
+            ("stack_pop", None),
+
+            ("queue_enqueue", 10),
+            ("queue_enqueue", 20),
+            ("queue_enqueue", 30),
+            ("queue_enqueue", 40),
+            ("queue_dequeue", None),
+        ]
+
+        self.status = "Test running"
+
+    def update_test(self):
+        if not self.test_mode:
+            return
+
+        now = pygame.time.get_ticks()
+        if now - self.last_test_time < 500:
+            return
+
+        if self.test_index >= len(self.test_steps):
+            self.test_mode = False
+            self.status = "Test complete"
+            return
+
+        action, value = self.test_steps[self.test_index]
+
+        if action == "stack_push":
+            self.stack.append(str(value))
+            self.highlight_stack_index = len(self.stack) - 1
+            self.status = f"Push {value}"
+
+        elif action == "stack_pop":
+            if self.stack:
+                self.stack.pop()
+                self.status = "Pop stack"
+
+        elif action == "queue_enqueue":
+            self.queue.append(str(value))
+            self.highlight_queue_index = len(self.queue) - 1
+            self.status = f"Enqueue {value}"
+
+        elif action == "queue_dequeue":
+            if self.queue:
+                self.queue.popleft()
+                self.status = "Dequeue queue"
+
+        self.test_index += 1
+        self.last_test_time = now
+
     def draw_input(self, screen, fonts, mouse):
         ui.draw_label(screen, "VALUE", self.input_rect.x, self.input_rect.y - 22, fonts["heading"])
 
@@ -137,6 +206,15 @@ class StackQueueVisualiser:
                 mouse,
                 style=button_styles.get(label, "neutral")
             )
+
+        ui.draw_button(
+            screen,
+            self.test_button,
+            "Run Test",
+            fonts["small"],
+            mouse,
+            style="start"
+        )
 
     def draw_vertical_panel(self, screen, fonts, panel, title, values, highlight_index, scroll, reverse=False):
         ui.draw_panel(screen, panel)
@@ -229,6 +307,9 @@ def run_stack_queue(screen, clock):
 
     while running:
         mouse = pygame.mouse.get_pos()
+
+        vis.update_test()
+
         back = vis.draw(screen, fonts, mouse)
 
         for event in pygame.event.get():
@@ -237,6 +318,18 @@ def run_stack_queue(screen, clock):
 
             vis.handle_scroll(event, mouse)
 
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if back.collidepoint(event.pos):
+                    running = False
+
+                elif vis.test_button.collidepoint(event.pos):
+                    vis.run_test()
+
+                else:
+                    for label, rect in vis.buttons.items():
+                        if rect.collidepoint(event.pos):
+                            actions[label]()
+
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     running = False
@@ -244,14 +337,6 @@ def run_stack_queue(screen, clock):
                     vis.input_text = vis.input_text[:-1]
                 elif event.unicode.isprintable():
                     vis.input_text += event.unicode
-
-            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if back.collidepoint(event.pos):
-                    running = False
-                else:
-                    for label, rect in vis.buttons.items():
-                        if rect.collidepoint(event.pos):
-                            actions[label]()
 
         pygame.display.flip()
         clock.tick(ui.FPS)
