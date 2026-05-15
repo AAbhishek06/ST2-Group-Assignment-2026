@@ -128,10 +128,10 @@ class StackQueueVisualiser:
             ("add_both", 1, 10),
             ("add_both", 2, 20),
             ("add_both", 3, 30),
-            ("add_both", 4, 40),
+            ("queue_only", None, 40),
             ("remove_both", None, None),
             ("remove_both", None, None),
-            ("remove_both", None, None),
+            ("queue_remove_only", None, None),
         ]
 
         self.status = "Test running"
@@ -152,34 +152,48 @@ class StackQueueVisualiser:
         action, stack_value, queue_value = self.test_steps[self.test_index]
 
         if action == "add_both":
-            self.test_add_both(stack_value, queue_value)
+            self.test_add(stack_value, queue_value)
+
+        elif action == "queue_only":
+            self.test_add(None, queue_value)
 
         elif action == "remove_both":
-            self.test_remove_both()
+            self.test_remove(remove_stack=True, remove_queue=True)
+
+        elif action == "queue_remove_only":
+            self.test_remove(remove_stack=False, remove_queue=True)
 
         self.test_index += 1
         self.last_test_time = now
 
-    def test_add_both(self, stack_value, queue_value):
-        self.stack.append(str(stack_value))
-        self.queue.append(str(queue_value))
+    def test_add(self, stack_value=None, queue_value=None):
+        if stack_value is not None:
+            self.stack.append(str(stack_value))
+            self.highlight_stack_index = len(self.stack) - 1
 
-        self.highlight_stack_index = len(self.stack) - 1
-        self.highlight_queue_index = len(self.queue) - 1
+        if queue_value is not None:
+            self.queue.append(str(queue_value))
+            self.highlight_queue_index = len(self.queue) - 1
 
-        self.status = f"Push {stack_value} / Enqueue {queue_value}"
+        if stack_value is not None and queue_value is not None:
+            self.status = f"Push {stack_value} / Enqueue {queue_value}"
+        else:
+            self.status = f"Enqueue {queue_value}"
 
-    def test_remove_both(self):
-        if self.stack:
+    def test_remove(self, remove_stack=True, remove_queue=True):
+        if remove_stack and self.stack:
             self.stack.pop()
 
-        if self.queue:
+        if remove_queue and self.queue:
             self.queue.popleft()
 
         self.highlight_stack_index = len(self.stack) - 1 if self.stack else None
         self.highlight_queue_index = 0 if self.queue else None
 
-        self.status = "Pop stack / Dequeue queue"
+        if remove_stack and remove_queue:
+            self.status = "Pop stack / Dequeue queue"
+        else:
+            self.status = "Dequeue queue"
 
     # Drawing interface
     def draw_input(self, screen, fonts, mouse):
