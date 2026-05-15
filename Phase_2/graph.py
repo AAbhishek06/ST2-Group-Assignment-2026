@@ -1,4 +1,4 @@
-# Imports
+# graph.py
 import pygame
 import sys
 import os
