@@ -45,6 +45,11 @@ class SortingVisualiser:
 
         self.buttons = {}
 
+        self.test_mode = False
+        self.test_queue = []
+        self.test_last_action = 0
+        self.test_delay = 900
+
     def create_buttons(self):
         labels = ["Bubble", "Selection", "Merge", "Start", "Reset", "Generate"]
 
@@ -73,6 +78,11 @@ class SortingVisualiser:
         self.numbers = self.original_numbers.copy()
         self.clear_state()
         self.status = "Reset complete"
+
+    def auto_generate(self):
+        self.original_numbers = random.sample(range(50, 501), 10)
+        self.numbers = self.original_numbers.copy()
+        self.clear_state()
 
     def randomise(self):
         if not self.input_text.isdigit():
@@ -111,7 +121,6 @@ class SortingVisualiser:
         }
 
         self.start_time = time.time()
-
         methods[self.algorithm]()
 
         self.sorting = True
@@ -190,6 +199,7 @@ class SortingVisualiser:
 
     def update_animation(self):
         if not self.sorting:
+            self.run_test_flow()
             return
 
         if self.step_index < len(self.steps):
@@ -205,9 +215,37 @@ class SortingVisualiser:
 
             self.status = f"{self.algorithm} completed in {duration:.2f}s"
 
+            self.auto_generate()
+
+    def run_test_flow(self):
+        if not self.test_mode:
+            return
+
+        if self.sorting:
+            return
+
+        now = pygame.time.get_ticks()
+
+        if now - self.test_last_action < self.test_delay:
+            return
+
+        if not self.test_queue:
+            self.test_mode = False
+            self.status = "TEST COMPLETE"
+            return
+
+        action = self.test_queue.pop(0)
+
+        if action == "GEN":
+            self.auto_generate()
+
+        elif action == "ALGO":
+            self.start_sort()
+
+        self.test_last_action = now
+
     def draw_ui(self, screen, fonts):
         ui.draw_panel(screen, self.controls_panel)
-
 
         ui.draw_label(
             screen,
@@ -301,6 +339,19 @@ class SortingVisualiser:
 
         ui.draw_status(screen, self.status, fonts["small"])
 
+    def run_tests(self):
+        if self.sorting:
+            return
+
+        self.test_mode = True
+        self.test_queue = [
+            "GEN", "ALGO",
+            "GEN", "ALGO",
+            "GEN", "ALGO"
+        ]
+        self.test_last_action = pygame.time.get_ticks()
+        self.status = "TEST RUNNING"
+
 
 def run_sorting(screen, clock):
     fonts = ui.create_fonts()
@@ -318,6 +369,8 @@ def run_sorting(screen, clock):
 
     running = True
 
+    test_button_rect = pygame.Rect(ui.WIDTH - 138, ui.HEADER_H + 20, 110, 38)
+
     while running:
         vis.update_animation()
 
@@ -326,6 +379,7 @@ def run_sorting(screen, clock):
         vis.draw(screen, fonts)
 
         back = ui.draw_back_button(screen, fonts["small"], mouse)
+        test = ui.draw_test_button(screen, fonts["small"], mouse)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -344,6 +398,10 @@ def run_sorting(screen, clock):
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if back.collidepoint(event.pos):
                     running = False
+
+                elif test.collidepoint(event.pos):
+                    vis.run_tests()
+
                 else:
                     for key, action in actions.items():
                         if vis.buttons[key].collidepoint(event.pos):
