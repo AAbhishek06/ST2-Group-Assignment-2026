@@ -1,13 +1,13 @@
+# stack_queue.py
 import pygame
 import sys
 import os
 from collections import deque
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
 import ui
 
-
+# Visualiser 
 class StackQueueVisualiser:
     def __init__(self):
         self.stack = []
@@ -31,7 +31,6 @@ class StackQueueVisualiser:
         self.queue_panel = pygame.Rect(560, 260, 380, 360)
 
         self.buttons = {}
-
         self.test_button = pygame.Rect(ui.WIDTH - 150, ui.HEADER_H + 20, 120, 38)
 
         self.test_mode = False
@@ -43,7 +42,7 @@ class StackQueueVisualiser:
         labels = ["Push", "Pop", "Clear", "Enqueue", "Dequeue"]
         button_width = 130
         spacing = 12
-        total_width = (button_width * len(labels)) + (spacing * (len(labels) - 1))
+        total_width = button_width * len(labels) + spacing * (len(labels) - 1)
         start_x = ui.WIDTH // 2 - total_width // 2
         y = self.controls_panel.bottom - 50
 
@@ -52,18 +51,21 @@ class StackQueueVisualiser:
             for i, label in enumerate(labels)
         }
 
+    def clamp_scroll(self, value):
+        return max(-self.scroll_limit, min(self.scroll_limit, value))
+
+    # Scrolling
     def handle_scroll(self, event, mouse):
         if event.type != pygame.MOUSEWHEEL:
             return
 
         if self.stack_panel.collidepoint(mouse):
-            self.stack_scroll += event.y * self.scroll_speed
-            self.stack_scroll = max(-self.scroll_limit, min(self.scroll_limit, self.stack_scroll))
+            self.stack_scroll = self.clamp_scroll(self.stack_scroll + event.y * self.scroll_speed)
 
         elif self.queue_panel.collidepoint(mouse):
-            self.queue_scroll += event.y * self.scroll_speed
-            self.queue_scroll = max(-self.scroll_limit, min(self.scroll_limit, self.queue_scroll))
+            self.queue_scroll = self.clamp_scroll(self.queue_scroll + event.y * self.scroll_speed)
 
+    # User actions
     def add_stack(self):
         if not self.input_text:
             self.status = "Enter value"
@@ -106,12 +108,15 @@ class StackQueueVisualiser:
         self.stack.clear()
         self.queue.clear()
         self.input_text = ""
+
         self.highlight_stack_index = None
         self.highlight_queue_index = None
+
         self.stack_scroll = 0
         self.queue_scroll = 0
         self.status = "Cleared"
 
+    # Test mode
     def run_test(self):
         self.clear_all()
 
@@ -120,17 +125,13 @@ class StackQueueVisualiser:
         self.last_test_time = pygame.time.get_ticks()
 
         self.test_steps = [
-            ("stack_push", 3),
-            ("stack_push", 7),
-            ("stack_push", 9),
-            ("stack_pop", None),
-            ("stack_pop", None),
-
-            ("queue_enqueue", 10),
-            ("queue_enqueue", 20),
-            ("queue_enqueue", 30),
-            ("queue_enqueue", 40),
-            ("queue_dequeue", None),
+            ("add_both", 1, 10),
+            ("add_both", 2, 20),
+            ("add_both", 3, 30),
+            ("add_both", 4, 40),
+            ("remove_both", None, None),
+            ("remove_both", None, None),
+            ("remove_both", None, None),
         ]
 
         self.status = "Test running"
@@ -148,31 +149,39 @@ class StackQueueVisualiser:
             self.status = "Test complete"
             return
 
-        action, value = self.test_steps[self.test_index]
+        action, stack_value, queue_value = self.test_steps[self.test_index]
 
-        if action == "stack_push":
-            self.stack.append(str(value))
-            self.highlight_stack_index = len(self.stack) - 1
-            self.status = f"Push {value}"
+        if action == "add_both":
+            self.test_add_both(stack_value, queue_value)
 
-        elif action == "stack_pop":
-            if self.stack:
-                self.stack.pop()
-                self.status = "Pop stack"
-
-        elif action == "queue_enqueue":
-            self.queue.append(str(value))
-            self.highlight_queue_index = len(self.queue) - 1
-            self.status = f"Enqueue {value}"
-
-        elif action == "queue_dequeue":
-            if self.queue:
-                self.queue.popleft()
-                self.status = "Dequeue queue"
+        elif action == "remove_both":
+            self.test_remove_both()
 
         self.test_index += 1
         self.last_test_time = now
 
+    def test_add_both(self, stack_value, queue_value):
+        self.stack.append(str(stack_value))
+        self.queue.append(str(queue_value))
+
+        self.highlight_stack_index = len(self.stack) - 1
+        self.highlight_queue_index = len(self.queue) - 1
+
+        self.status = f"Push {stack_value} / Enqueue {queue_value}"
+
+    def test_remove_both(self):
+        if self.stack:
+            self.stack.pop()
+
+        if self.queue:
+            self.queue.popleft()
+
+        self.highlight_stack_index = len(self.stack) - 1 if self.stack else None
+        self.highlight_queue_index = 0 if self.queue else None
+
+        self.status = "Pop stack / Dequeue queue"
+
+    # Drawing interface
     def draw_input(self, screen, fonts, mouse):
         ui.draw_label(screen, "VALUE", self.input_rect.x, self.input_rect.y - 22, fonts["heading"])
 
@@ -207,15 +216,9 @@ class StackQueueVisualiser:
                 style=button_styles.get(label, "neutral")
             )
 
-        ui.draw_button(
-            screen,
-            self.test_button,
-            "Run Test",
-            fonts["small"],
-            mouse,
-            style="start"
-        )
+        ui.draw_button(screen, self.test_button, "Run Test", fonts["small"], mouse, style="start")
 
+    # Drawing structures
     def draw_vertical_panel(self, screen, fonts, panel, title, values, highlight_index, scroll, reverse=False):
         ui.draw_panel(screen, panel)
 
@@ -234,13 +237,11 @@ class StackQueueVisualiser:
 
         x = panel.centerx - 37
         y_start = panel.top + 60
-        spacing = 60
-
         display_values = list(reversed(values)) if reverse else list(values)
 
         for i, value in enumerate(display_values):
             real_index = len(values) - 1 - i if reverse else i
-            rect = pygame.Rect(x, y_start + i * spacing + scroll, 75, 42)
+            rect = pygame.Rect(x, y_start + i * 60 + scroll, 75, 42)
 
             ui.draw_node_rect(
                 screen,
@@ -289,7 +290,7 @@ class StackQueueVisualiser:
 
         return back
 
-
+# Main loop
 def run_stack_queue(screen, clock):
     fonts = ui.create_fonts()
     vis = StackQueueVisualiser()
@@ -309,7 +310,6 @@ def run_stack_queue(screen, clock):
         mouse = pygame.mouse.get_pos()
 
         vis.update_test()
-
         back = vis.draw(screen, fonts, mouse)
 
         for event in pygame.event.get():
@@ -330,17 +330,18 @@ def run_stack_queue(screen, clock):
                         if rect.collidepoint(event.pos):
                             actions[label]()
 
-            if event.type == pygame.KEYDOWN:
+            elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     running = False
+
                 elif event.key == pygame.K_BACKSPACE:
                     vis.input_text = vis.input_text[:-1]
+
                 elif event.unicode.isprintable():
                     vis.input_text += event.unicode
 
         pygame.display.flip()
         clock.tick(ui.FPS)
-
 
 if __name__ == "__main__":
     pygame.init()
