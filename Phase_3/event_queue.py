@@ -1,15 +1,14 @@
+# Imports
 import pygame
 import sys
 import os
 import heapq
 import time
-import random
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
 import ui
 
-
+# Event structure
 class Event:
     def __init__(self, name, priority, timestamp):
         self.name = name
@@ -19,17 +18,15 @@ class Event:
     def __lt__(self, other):
         return (self.priority, self.timestamp) < (other.priority, other.timestamp)
 
-
+# Visualiser setup
 class EventQueueVisualiser:
     def __init__(self):
-
         self.heap = []
         self.processed_events = []
 
         self.input_name = ""
         self.input_priority = ""
         self.active_input = None
-
         self.status = "Ready"
 
         self.animating = False
@@ -38,7 +35,6 @@ class EventQueueVisualiser:
 
         self.current_event = None
         self.highlight_index = None
-
         self.start_time = None
         self.end_time = None
 
@@ -48,77 +44,39 @@ class EventQueueVisualiser:
         self.test_index = 0
         self.test_timer = 0
 
-        self.controls_panel = pygame.Rect(
-            24,
-            ui.HEADER_H + 16,
-            ui.WIDTH - 48,
-            150
-        )
-
-        self.name_box = pygame.Rect(
-            ui.WIDTH // 2 - 190,
-            self.controls_panel.y + 42,
-            180,
-            40
-        )
-
-        self.prio_box = pygame.Rect(
-            ui.WIDTH // 2 + 10,
-            self.controls_panel.y + 42,
-            180,
-            40
-        )
-
-        self.processed_panel = pygame.Rect(
-            ui.WIDTH - 310,
-            250,
-            270,
-            360
-        )
+        self.controls_panel = pygame.Rect(24, ui.HEADER_H + 16, ui.WIDTH - 48, 150)
+        self.name_box = pygame.Rect(ui.WIDTH // 2 - 190, self.controls_panel.y + 42, 180, 40)
+        self.prio_box = pygame.Rect(ui.WIDTH // 2 + 10, self.controls_panel.y + 42, 180, 40)
+        self.processed_panel = pygame.Rect(ui.WIDTH - 310, 250, 270, 360)
 
         self.buttons = {}
 
     def create_buttons(self):
         labels = ["Add", "Process", "Step", "Reset"]
-
         button_width = 130
         spacing = 12
-
         total_width = len(labels) * button_width + (len(labels) - 1) * spacing
         start_x = ui.WIDTH // 2 - total_width // 2
         y = self.controls_panel.bottom - 50
 
-        self.buttons = {}
+        self.buttons = {
+            label: pygame.Rect(start_x + i * (button_width + spacing), y, button_width, 42)
+            for i, label in enumerate(labels)
+        }
 
-        for i, label in enumerate(labels):
-            self.buttons[label] = pygame.Rect(
-                start_x + i * (button_width + spacing),
-                y,
-                button_width,
-                42
-            )
-
-        self.buttons["Test"] = pygame.Rect(
-            ui.WIDTH - 160,
-            ui.HEADER_H + 18,
-            120,
-            38
-        )
+        self.buttons["Test"] = pygame.Rect(ui.WIDTH - 160, ui.HEADER_H + 18, 120, 38)
 
     def reset(self):
         self.heap = []
         self.processed_events = []
-
         self.input_name = ""
         self.input_priority = ""
         self.active_input = None
 
         self.animating = False
         self.last_step_time = 0
-
         self.current_event = None
         self.highlight_index = None
-
         self.start_time = None
         self.end_time = None
 
@@ -130,6 +88,16 @@ class EventQueueVisualiser:
 
         self.status = "Queue cleared"
 
+    def get_active_text(self):
+        return self.input_name if self.active_input == "name" else self.input_priority
+
+    def set_active_text(self, text):
+        if self.active_input == "name":
+            self.input_name = text
+        elif self.active_input == "priority":
+            self.input_priority = text
+
+    # User actions
     def add_event(self):
         if self.animating or self.testing:
             self.status = "Busy"
@@ -148,7 +116,6 @@ class EventQueueVisualiser:
 
         self.current_event = event
         self.highlight_index = self.heap.index(event)
-
         self.status = "Event added"
 
     def start_processing(self):
@@ -161,22 +128,13 @@ class EventQueueVisualiser:
 
         self.processed_events = []
         self.start_time = time.time()
-
         self.animating = True
         self.last_step_time = pygame.time.get_ticks()
-
         self.status = "Processing started"
 
     def process_one(self):
         if not self.heap:
-            self.animating = False
-            self.highlight_index = None
-
-            if self.start_time:
-                self.end_time = time.time()
-                self.status = f"Done in {self.end_time - self.start_time:.2f}s"
-            else:
-                self.status = "Queue empty"
+            self.finish_processing()
             return
 
         event = heapq.heappop(self.heap)
@@ -185,12 +143,20 @@ class EventQueueVisualiser:
         self.current_event = event
         self.highlight_index = 0 if self.heap else None
 
-        if not self.heap:
-            self.animating = False
+        if self.heap:
+            self.status = "Processed event"
+        else:
+            self.finish_processing()
+
+    def finish_processing(self):
+        self.animating = False
+        self.highlight_index = None
+
+        if self.start_time:
             self.end_time = time.time()
             self.status = f"Done in {self.end_time - self.start_time:.2f}s"
         else:
-            self.status = "Processed event"
+            self.status = "Queue empty"
 
     def manual_step(self):
         if self.animating or self.testing:
@@ -206,6 +172,7 @@ class EventQueueVisualiser:
 
         self.process_one()
 
+    # Test mode
     def start_test(self):
         if self.animating:
             return
@@ -216,11 +183,8 @@ class EventQueueVisualiser:
         self.test_stage = "add"
         self.test_index = 0
         self.test_timer = pygame.time.get_ticks()
+        self.test_items = list(zip(["A", "B", "C", "D", "E"], [5, 1, 3, 2, 4]))
 
-        names = ["A", "B", "C", "D", "E"]
-        priorities = [5, 1, 3, 2, 4]
-
-        self.test_items = list(zip(names, priorities))
         self.status = "Test started"
 
     def update_test(self):
@@ -235,26 +199,30 @@ class EventQueueVisualiser:
         self.test_timer = now
 
         if self.test_stage == "add":
-            if self.test_index < len(self.test_items):
-                name, prio = self.test_items[self.test_index]
-                heapq.heappush(self.heap, Event(name, prio, time.time()))
-                self.test_index += 1
-                self.status = f"Added {name}"
-                return
+            self.add_test_event()
+        elif self.test_stage == "process":
+            self.process_test_event()
 
-            self.test_stage = "process"
-            self.test_index = 0
+    def add_test_event(self):
+        if self.test_index < len(self.test_items):
+            name, priority = self.test_items[self.test_index]
+            heapq.heappush(self.heap, Event(name, priority, time.time()))
+            self.test_index += 1
+            self.status = f"Added {name}"
             return
 
-        if self.test_stage == "process":
-            if self.heap:
-                event = heapq.heappop(self.heap)
-                self.processed_events.append(event)
-                self.status = f"Processed {event.name}"
-                return
+        self.test_stage = "process"
+        self.test_index = 0
 
-            self.testing = False
-            self.status = "Test complete"
+    def process_test_event(self):
+        if self.heap:
+            event = heapq.heappop(self.heap)
+            self.processed_events.append(event)
+            self.status = f"Processed {event.name}"
+            return
+
+        self.testing = False
+        self.status = "Test complete"
 
     def update_animation(self):
         if self.testing:
@@ -270,40 +238,24 @@ class EventQueueVisualiser:
             self.process_one()
             self.last_step_time = now
 
+    # Drawing interface
     def draw_inputs(self, screen, fonts, mouse):
-        ui.draw_label(
-            screen,
-            "NAME",
-            self.name_box.x,
-            self.name_box.y - 22,
-            fonts["heading"]
-        )
+        inputs = [
+            ("NAME", self.name_box, self.input_name, "name"),
+            ("PRIORITY", self.prio_box, self.input_priority, "priority")
+        ]
 
-        ui.draw_input_box(
-            screen,
-            self.name_box,
-            self.input_name,
-            fonts["normal"],
-            active=(self.active_input == "name"),
-            mouse_pos=mouse
-        )
+        for label, rect, text, input_name in inputs:
+            ui.draw_label(screen, label, rect.x, rect.y - 22, fonts["heading"])
 
-        ui.draw_label(
-            screen,
-            "PRIORITY",
-            self.prio_box.x,
-            self.prio_box.y - 22,
-            fonts["heading"]
-        )
-
-        ui.draw_input_box(
-            screen,
-            self.prio_box,
-            self.input_priority,
-            fonts["normal"],
-            active=(self.active_input == "priority"),
-            mouse_pos=mouse
-        )
+            ui.draw_input_box(
+                screen,
+                rect,
+                text,
+                fonts["normal"],
+                active=(self.active_input == input_name),
+                mouse_pos=mouse
+            )
 
     def draw_controls(self, screen, fonts, mouse):
         ui.draw_panel(screen, self.controls_panel)
@@ -313,35 +265,35 @@ class EventQueueVisualiser:
             "Add": "start",
             "Process": "start",
             "Step": "ghost",
-            "Reset": "danger"
+            "Reset": "danger",
+            "Test": "accent"
         }
 
         for label, rect in self.buttons.items():
-            style = "accent" if label == "Test" else styles.get(label, "neutral")
-
             ui.draw_button(
                 screen,
                 rect,
                 label,
                 fonts["small"],
                 mouse,
-                style=style
+                style=styles.get(label, "neutral")
             )
 
-    def get_pos(self, i):
+    # Drawing heap
+    def get_pos(self, index):
         level = 0
-        n = i + 1
+        count = index + 1
 
-        while n > 1:
-            n //= 2
+        while count > 1:
+            count //= 2
             level += 1
 
-        first = (2 ** level) - 1
-        pos = i - first
+        first = 2 ** level - 1
+        position = index - first
         nodes = 2 ** level
 
         gap = ui.WIDTH // (nodes + 1)
-        x = gap * (pos + 1)
+        x = gap * (position + 1)
         y = 280 + level * 85
 
         return x, y
@@ -359,24 +311,22 @@ class EventQueueVisualiser:
             )
             return
 
-        for i in range(len(self.heap)):
-            left = 2 * i + 1
-            right = 2 * i + 2
+        self.draw_heap_edges(screen)
+        self.draw_heap_nodes(screen, fonts)
 
-            x1, y1 = self.get_pos(i)
+    def draw_heap_edges(self, screen):
+        for index in range(len(self.heap)):
+            x1, y1 = self.get_pos(index)
 
-            if left < len(self.heap):
-                x2, y2 = self.get_pos(left)
-                pygame.draw.line(screen, ui.BLACK, (x1, y1), (x2, y2), 2)
+            for child in (2 * index + 1, 2 * index + 2):
+                if child < len(self.heap):
+                    x2, y2 = self.get_pos(child)
+                    pygame.draw.line(screen, ui.BLACK, (x1, y1), (x2, y2), 2)
 
-            if right < len(self.heap):
-                x2, y2 = self.get_pos(right)
-                pygame.draw.line(screen, ui.BLACK, (x1, y1), (x2, y2), 2)
-
-        for i, event in enumerate(self.heap):
-            x, y = self.get_pos(i)
-
-            colour = ui.YELLOW if i == self.highlight_index else ui.LIGHT_BLUE
+    def draw_heap_nodes(self, screen, fonts):
+        for index, event in enumerate(self.heap):
+            x, y = self.get_pos(index)
+            colour = ui.YELLOW if index == self.highlight_index else ui.LIGHT_BLUE
 
             pygame.draw.circle(screen, colour, (x, y), 30)
             pygame.draw.circle(screen, ui.BLACK, (x, y), 30, 2)
@@ -384,6 +334,7 @@ class EventQueueVisualiser:
             ui.draw_text(screen, event.name[:6], x, y - 10, fonts["small"], ui.BLACK, centre=True)
             ui.draw_text(screen, f"P:{event.priority}", x, y + 10, fonts["small"], ui.DARK_GREY, centre=True)
 
+    # Drawing processed order
     def draw_processed(self, screen, fonts):
         ui.draw_panel(screen, self.processed_panel)
 
@@ -409,21 +360,14 @@ class EventQueueVisualiser:
             )
             return
 
-        y = self.processed_panel.top + 60
-        spacing = 34
+        y = self.processed_panel.top + 62
+        spacing = 50
 
-        for event in self.processed_events[-9:]:
-            row = pygame.Rect(
-                self.processed_panel.x + 12,
-                y,
-                self.processed_panel.width - 24,
-                30
-            )
-
+        for event in self.processed_events[-6:]:
             ui.draw_node_rect(
                 screen,
-                row.x,
-                row.y,
+                self.processed_panel.x + 91,
+                y,
                 f"{event.name[:10]} P:{event.priority}",
                 fonts["small"],
                 highlight=False
@@ -433,7 +377,6 @@ class EventQueueVisualiser:
 
     def draw(self, screen, fonts, mouse):
         ui.clear_screen(screen)
-
         ui.draw_header(screen, "Event Queue", fonts)
 
         self.draw_controls(screen, fonts, mouse)
@@ -442,7 +385,7 @@ class EventQueueVisualiser:
 
         ui.draw_status(screen, self.status, fonts["small"])
 
-
+# Main loop
 def run_event_queue(screen, clock):
     fonts = ui.create_fonts()
     vis = EventQueueVisualiser()
@@ -475,18 +418,12 @@ def run_event_queue(screen, clock):
                     running = False
 
                 elif event.key == pygame.K_BACKSPACE:
-                    if vis.active_input == "name":
-                        vis.input_name = vis.input_name[:-1]
-                    elif vis.active_input == "priority":
-                        vis.input_priority = vis.input_priority[:-1]
+                    vis.set_active_text(vis.get_active_text()[:-1])
 
                 elif event.unicode.isprintable():
-                    if vis.active_input == "name":
-                        vis.input_name += event.unicode
-                    elif vis.active_input == "priority":
-                        vis.input_priority += event.unicode
+                    vis.set_active_text(vis.get_active_text() + event.unicode)
 
-            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if back.collidepoint(event.pos):
                     running = False
                     continue
