@@ -3,6 +3,7 @@ import sys
 import os
 import heapq
 import time
+import random
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -39,6 +40,11 @@ class PathfindingVisualiser:
 
         self.start_time = None
         self.algorithm_time = 0
+
+        self.test_mode = False
+        self.test_stage = 0
+        self.test_cells = []
+        self.test_timer = 0
 
         self.controls_panel = pygame.Rect(
             24,
@@ -85,7 +91,7 @@ class PathfindingVisualiser:
         self.status_message = "Grid cleared"
 
     def handle_click(self, pos):
-        if self.animating:
+        if self.animating or self.test_mode:
             return
 
         x, y = pos
@@ -102,13 +108,13 @@ class PathfindingVisualiser:
         if not self.start:
             self.start = (row, col)
             self.grid[row][col] = "start"
-            self.status_message = "Start point set, add end point"
+            self.status_message = "Start point set"
             return
 
         if not self.end and (row, col) != self.start:
             self.end = (row, col)
             self.grid[row][col] = "end"
-            self.status_message = "End point set, add walls or start"
+            self.status_message = "End point set"
             return
 
         if (row, col) != self.start and (row, col) != self.end:
@@ -182,10 +188,58 @@ class PathfindingVisualiser:
 
         if path:
             self.algorithm_time = round(time.time() - self.start_time, 3)
-            self.status_message = f"Search complete in {self.algorithm_time}s, showing animation"
+            self.status_message = "Search complete"
         else:
             self.algorithm_time = round(time.time() - self.start_time, 3)
-            self.status_message = "Search complete, no path found"
+            self.status_message = "No path found"
+
+    def start_test(self):
+        self.clear()
+
+        self.test_mode = True
+        self.test_stage = 0
+        self.test_cells = random.sample(
+            [(r, c) for r in range(self.rows) for c in range(self.cols)],
+            2
+        )
+        self.test_timer = pygame.time.get_ticks()
+
+        self.status_message = "Test running"
+
+    def update_test(self):
+        if not self.test_mode:
+            return
+
+        now = pygame.time.get_ticks()
+        if now - self.test_timer < 300:
+            return
+
+        self.test_timer = now
+
+        if self.test_stage == 0:
+            self.start = self.test_cells[0]
+            r, c = self.start
+            self.grid[r][c] = "start"
+
+        elif self.test_stage == 1:
+            self.end = self.test_cells[1]
+            r, c = self.end
+            self.grid[r][c] = "end"
+
+        elif self.test_stage == 2:
+            for _ in range(30):
+                r = random.randint(0, self.rows - 1)
+                c = random.randint(0, self.cols - 1)
+                if (r, c) not in [self.start, self.end]:
+                    self.grid[r][c] = "wall"
+
+        elif self.test_stage == 3:
+            self.run_pathfinding()
+            self.test_mode = False
+            self.test_stage = 0
+            return
+
+        self.test_stage += 1
 
     def update_animation(self):
         if not self.animating:
@@ -219,7 +273,7 @@ class PathfindingVisualiser:
                 self.animation_stage = None
 
                 if self.final_path:
-                    self.status_message = f"Path found with {len(self.final_path)} steps, in {self.algorithm_time}s"
+                    self.status_message = f"Path found in {self.algorithm_time}s"
                 else:
                     self.status_message = "No path found"
 
@@ -252,7 +306,7 @@ class PathfindingVisualiser:
 
         ui.draw_text(
             screen,
-            "Visualise a grid based pathfinding algorithm",
+            "Visualise pathfinding",
             self.controls_panel.centerx,
             self.controls_panel.y + 28,
             fonts["heading"],
@@ -261,8 +315,20 @@ class PathfindingVisualiser:
         )
 
         for label, rect in self.buttons.items():
-            style = "start" if label == "Start" else "ghost"
-            ui.draw_button(screen, rect, label, fonts["small"], mouse, style=style)
+            ui.draw_button(
+                screen,
+                rect,
+                label,
+                fonts["small"],
+                mouse,
+                style="start" if label == "Start" else "ghost"
+            )
+
+        back = ui.draw_back_button(screen, fonts["small"], mouse)
+        test = ui.draw_test_button(screen, fonts["small"], mouse)
+
+        self.back_btn = back
+        self.test_btn = test
 
     def draw(self, screen, fonts, mouse):
         ui.clear_screen(screen)
@@ -291,9 +357,8 @@ def run_pathfinding(screen, clock):
         mouse = pygame.mouse.get_pos()
 
         vis.update_animation()
+        vis.update_test()
         vis.draw(screen, fonts, mouse)
-
-        back = ui.draw_back_button(screen, fonts["small"], mouse)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -304,14 +369,20 @@ def run_pathfinding(screen, clock):
                     running = False
 
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if back.collidepoint(event.pos):
+                if vis.back_btn.collidepoint(event.pos):
                     running = False
-                else:
-                    for label, rect in vis.buttons.items():
-                        if rect.collidepoint(event.pos):
-                            actions[label]()
-                            break
-                    vis.handle_click(event.pos)
+                    continue
+
+                if vis.test_btn.collidepoint(event.pos):
+                    vis.start_test()
+                    continue
+
+                for label, rect in vis.buttons.items():
+                    if rect.collidepoint(event.pos):
+                        actions[label]()
+                        break
+
+                vis.handle_click(event.pos)
 
         pygame.display.flip()
         clock.tick(ui.FPS)
