@@ -3,6 +3,7 @@ import sys
 import os
 import heapq
 import time
+import random
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -21,6 +22,7 @@ class Event:
 
 class EventQueueVisualiser:
     def __init__(self):
+
         self.heap = []
         self.processed_events = []
 
@@ -39,6 +41,12 @@ class EventQueueVisualiser:
 
         self.start_time = None
         self.end_time = None
+
+        self.testing = False
+        self.test_stage = None
+        self.test_items = []
+        self.test_index = 0
+        self.test_timer = 0
 
         self.controls_panel = pygame.Rect(
             24,
@@ -90,6 +98,13 @@ class EventQueueVisualiser:
                 42
             )
 
+        self.buttons["Test"] = pygame.Rect(
+            ui.WIDTH - 160,
+            ui.HEADER_H + 18,
+            120,
+            38
+        )
+
     def reset(self):
         self.heap = []
         self.processed_events = []
@@ -107,23 +122,24 @@ class EventQueueVisualiser:
         self.start_time = None
         self.end_time = None
 
+        self.testing = False
+        self.test_stage = None
+        self.test_items = []
+        self.test_index = 0
+        self.test_timer = 0
+
         self.status = "Queue cleared"
 
     def add_event(self):
-        if self.animating:
-            self.status = "Stop processing first"
+        if self.animating or self.testing:
+            self.status = "Busy"
             return
 
         if not self.input_name.strip() or not self.input_priority.isdigit():
             self.status = "Enter valid name and priority"
             return
 
-        event = Event(
-            self.input_name.strip(),
-            int(self.input_priority),
-            time.time()
-        )
-
+        event = Event(self.input_name.strip(), int(self.input_priority), time.time())
         heapq.heappush(self.heap, event)
 
         self.input_name = ""
@@ -136,7 +152,7 @@ class EventQueueVisualiser:
         self.status = "Event added"
 
     def start_processing(self):
-        if self.animating:
+        if self.animating or self.testing:
             return
 
         if not self.heap:
@@ -169,16 +185,16 @@ class EventQueueVisualiser:
         self.current_event = event
         self.highlight_index = 0 if self.heap else None
 
-        self.status = "Processed event"
-
         if not self.heap:
             self.animating = False
             self.end_time = time.time()
             self.status = f"Done in {self.end_time - self.start_time:.2f}s"
+        else:
+            self.status = "Processed event"
 
     def manual_step(self):
-        if self.animating:
-            self.status = "Already processing"
+        if self.animating or self.testing:
+            self.status = "Busy"
             return
 
         if not self.heap:
@@ -190,7 +206,61 @@ class EventQueueVisualiser:
 
         self.process_one()
 
+    def start_test(self):
+        if self.animating:
+            return
+
+        self.reset()
+
+        self.testing = True
+        self.test_stage = "add"
+        self.test_index = 0
+        self.test_timer = pygame.time.get_ticks()
+
+        names = ["A", "B", "C", "D", "E"]
+        priorities = [5, 1, 3, 2, 4]
+
+        self.test_items = list(zip(names, priorities))
+        self.status = "Test started"
+
+    def update_test(self):
+        if not self.testing:
+            return
+
+        now = pygame.time.get_ticks()
+
+        if now - self.test_timer < 500:
+            return
+
+        self.test_timer = now
+
+        if self.test_stage == "add":
+            if self.test_index < len(self.test_items):
+                name, prio = self.test_items[self.test_index]
+                heapq.heappush(self.heap, Event(name, prio, time.time()))
+                self.test_index += 1
+                self.status = f"Added {name}"
+                return
+
+            self.test_stage = "process"
+            self.test_index = 0
+            return
+
+        if self.test_stage == "process":
+            if self.heap:
+                event = heapq.heappop(self.heap)
+                self.processed_events.append(event)
+                self.status = f"Processed {event.name}"
+                return
+
+            self.testing = False
+            self.status = "Test complete"
+
     def update_animation(self):
+        if self.testing:
+            self.update_test()
+            return
+
         if not self.animating:
             return
 
@@ -247,13 +317,15 @@ class EventQueueVisualiser:
         }
 
         for label, rect in self.buttons.items():
+            style = "accent" if label == "Test" else styles.get(label, "neutral")
+
             ui.draw_button(
                 screen,
                 rect,
                 label,
                 fonts["small"],
                 mouse,
-                style=styles.get(label, "neutral")
+                style=style
             )
 
     def get_pos(self, i):
@@ -340,7 +412,7 @@ class EventQueueVisualiser:
         y = self.processed_panel.top + 60
         spacing = 34
 
-        for i, event in enumerate(self.processed_events[-9:]):
+        for event in self.processed_events[-9:]:
             row = pygame.Rect(
                 self.processed_panel.x + 12,
                 y,
@@ -357,7 +429,7 @@ class EventQueueVisualiser:
                 highlight=False
             )
 
-        y += spacing
+            y += spacing
 
     def draw(self, screen, fonts, mouse):
         ui.clear_screen(screen)
@@ -381,6 +453,7 @@ def run_event_queue(screen, clock):
         "Process": vis.start_processing,
         "Step": vis.manual_step,
         "Reset": vis.reset,
+        "Test": vis.start_test
     }
 
     running = True
@@ -431,7 +504,6 @@ def run_event_queue(screen, clock):
 
         pygame.display.flip()
         clock.tick(ui.FPS)
-
 
 if __name__ == "__main__":
     pygame.init()
