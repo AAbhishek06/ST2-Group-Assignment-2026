@@ -1,3 +1,4 @@
+# bst.py
 import pygame
 import sys
 import os
@@ -5,13 +6,12 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import ui
 
-
+# Tree structure
 class TreeNode:
     def __init__(self, data):
         self.data = data
         self.left = None
         self.right = None
-
 
 class BinarySearchTree:
     def __init__(self):
@@ -61,13 +61,13 @@ class BinarySearchTree:
     def clear(self):
         self.root = None
 
-
+# Visualiser setup
 class BSTVisualiser:
     def __init__(self):
         self.tree = BinarySearchTree()
+
         self.input_text = ""
         self.input_active = False
-
         self.status = "Ready"
         self.traversal = ""
         self.highlight = None
@@ -75,7 +75,6 @@ class BSTVisualiser:
         self.camera = pygame.Vector2(0, 0)
         self.dragging = False
         self.last_mouse = pygame.Vector2(0, 0)
-
         self.cam_limit_x = 1200
         self.cam_limit_y = 1200
 
@@ -89,13 +88,12 @@ class BSTVisualiser:
         self._test_timer = 0
         self._test_delay = 700
         self._test_phase = "insert"
-        self._test_log = []
 
     def create_buttons(self):
         labels = ["Insert", "Inorder", "Preorder", "Postorder", "Clear", "Recenter"]
         button_width = 130
         spacing = 12
-        total_width = (button_width * len(labels)) + (spacing * (len(labels) - 1))
+        total_width = button_width * len(labels) + spacing * (len(labels) - 1)
         start_x = ui.WIDTH // 2 - total_width // 2
         y = self.input_rect.bottom + 18
 
@@ -107,6 +105,12 @@ class BSTVisualiser:
     def world(self, x, y):
         return x + self.camera.x, y + self.camera.y
 
+    def reset_visual_state(self):
+        self.input_text = ""
+        self.traversal = ""
+        self.highlight = None
+
+    # User actions
     def insert_node(self):
         if self.input_text == "":
             self.status = "Enter value"
@@ -126,40 +130,29 @@ class BSTVisualiser:
             self.status = "Duplicate"
 
     def show(self, mode):
-        labels = {
-            "in": "Inorder",
-            "pre": "Preorder",
-            "post": "Postorder",
-        }
-
+        labels = {"in": "Inorder", "pre": "Preorder", "post": "Postorder"}
         self.traversal = str(self.tree.traverse(mode))
         self.status = labels[mode]
 
     def clear_all(self):
         self.tree.clear()
-        self.input_text = ""
-        self.traversal = ""
-        self.highlight = None
+        self.reset_visual_state()
         self.status = "Cleared"
 
     def reset_view(self):
         self.camera = pygame.Vector2(0, 0)
         self.status = "Recentered"
 
+    # Test mode
     def bst_test(self):
         self.tree.clear()
-
-        self.input_text = ""
-        self.traversal = ""
-        self.highlight = None
+        self.reset_visual_state()
 
         self._test_active = True
         self._test_values = [50, 30, 70, 20, 40, 60, 80]
         self._test_index = 0
         self._test_timer = pygame.time.get_ticks()
         self._test_phase = "insert"
-        self._test_log = []
-
         self.status = "Test started"
 
     def update_test(self):
@@ -167,7 +160,6 @@ class BSTVisualiser:
             return
 
         now = pygame.time.get_ticks()
-
         if now - self._test_timer < self._test_delay:
             return
 
@@ -178,7 +170,6 @@ class BSTVisualiser:
                 value = self._test_values[self._test_index]
                 self.tree.insert(value)
                 self.highlight = value
-                self._test_log.append(value)
                 self.status = f"Inserted {value}"
                 self._test_index += 1
                 return
@@ -187,20 +178,19 @@ class BSTVisualiser:
             self._test_index = 0
             return
 
-        if self._test_phase == "verify":
-            inorder = self.tree.traverse("in")
-            self.traversal = str(inorder)
+        inorder = self.tree.traverse("in")
+        expected = sorted(self._test_values)
+        self.traversal = str(inorder)
 
-            expected = sorted(self._test_values)
+        if inorder == expected:
+            self.status = f"PASS inorder {inorder}"
+        else:
+            self.status = f"FAIL expected {expected} got {inorder}"
 
-            if inorder == expected:
-                self.status = f"PASS inorder {inorder}"
-            else:
-                self.status = f"FAIL expected {expected} got {inorder}"
+        self._test_phase = "done"
+        self._test_active = False
 
-            self._test_phase = "done"
-            self._test_active = False
-
+    # Camera movement
     def clamp_camera(self):
         self.camera.x = max(-self.cam_limit_x, min(self.cam_limit_x, self.camera.x))
         self.camera.y = max(-self.cam_limit_y, min(self.cam_limit_y, self.camera.y))
@@ -219,6 +209,7 @@ class BSTVisualiser:
             self.last_mouse = pos
             self.clamp_camera()
 
+    # Drawing tree
     def draw_node(self, screen, fonts, node, x, y, gap):
         sx, sy = self.world(x, y)
 
@@ -231,19 +222,26 @@ class BSTVisualiser:
             highlight=(node.data == self.highlight)
         )
 
-        for child, cx in [(node.left, x - gap), (node.right, x + gap)]:
-            if child:
-                px, py = self.world(cx, y + 100)
+        children = [
+            (node.left, x - gap),
+            (node.right, x + gap)
+        ]
 
-                ui.draw_arrow(
-                    screen,
-                    (sx, sy + ui.NODE_HEIGHT // 2),
-                    (px, py - ui.NODE_HEIGHT // 2),
-                    ui.BORDER_DEFAULT,
-                    2
-                )
+        for child, child_x in children:
+            if child is None:
+                continue
 
-                self.draw_node(screen, fonts, child, cx, y + 100, max(gap // 2, 70))
+            px, py = self.world(child_x, y + 100)
+
+            ui.draw_arrow(
+                screen,
+                (sx, sy + ui.NODE_HEIGHT // 2),
+                (px, py - ui.NODE_HEIGHT // 2),
+                ui.BORDER_DEFAULT,
+                2
+            )
+
+            self.draw_node(screen, fonts, child, child_x, y + 100, max(gap // 2, 70))
 
     def draw_tree(self, screen, fonts):
         if self.tree.root is None:
@@ -260,6 +258,7 @@ class BSTVisualiser:
 
         self.draw_node(screen, fonts, self.tree.root, ui.WIDTH // 2, 280, 240)
 
+    # Drawing interface
     def draw_controls(self, screen, fonts, mouse):
         ui.draw_panel(screen, self.controls_panel)
 
@@ -283,7 +282,7 @@ class BSTVisualiser:
         button_styles = {
             "Insert": "start",
             "Clear": "danger",
-            "Recenter": "ghost",
+            "Recenter": "ghost"
         }
 
         for label, rect in self.buttons.items():
@@ -327,7 +326,7 @@ class BSTVisualiser:
 
         return back, test
 
-
+# Main loop
 def run_bst(screen, clock):
     fonts = ui.create_fonts()
     vis = BSTVisualiser()
@@ -339,8 +338,7 @@ def run_bst(screen, clock):
         "Preorder": lambda: vis.show("pre"),
         "Postorder": lambda: vis.show("post"),
         "Clear": vis.clear_all,
-        "Recenter": vis.reset_view,
-        "Run Test": vis.bst_test
+        "Recenter": vis.reset_view
     }
 
     running = True
@@ -358,7 +356,6 @@ def run_bst(screen, clock):
             vis.handle_drag(event)
 
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-
                 if back.collidepoint(event.pos):
                     running = False
                     continue
@@ -376,22 +373,18 @@ def run_bst(screen, clock):
                     if rect.collidepoint(event.pos):
                         actions[label]()
 
-            if event.type == pygame.KEYDOWN:
+            if event.type == pygame.KEYDOWN and vis.input_active:
+                if event.key == pygame.K_BACKSPACE:
+                    vis.input_text = vis.input_text[:-1]
 
-                if vis.input_active:
+                elif event.key == pygame.K_RETURN:
+                    vis.insert_node()
 
-                    if event.key == pygame.K_BACKSPACE:
-                        vis.input_text = vis.input_text[:-1]
-
-                    elif event.key == pygame.K_RETURN:
-                        vis.insert_node()
-
-                    elif event.unicode.isdigit():
-                        vis.input_text += event.unicode
+                elif event.unicode.isdigit():
+                    vis.input_text += event.unicode
 
         pygame.display.flip()
         clock.tick(ui.FPS)
-
 
 if __name__ == "__main__":
     pygame.init()
