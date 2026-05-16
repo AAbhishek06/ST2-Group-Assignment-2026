@@ -362,7 +362,7 @@ class PathfindingVisualiser:
 
     def draw(self, screen, fonts, mouse):
         ui.clear_screen(screen)
-        ui.draw_header(screen, "Pathfinding", fonts, right_label="Algorithms")
+        ui.draw_header(screen, "Pathfinding", fonts)
 
         self.draw_controls(screen, fonts, mouse)
         self.draw_grid(screen)
