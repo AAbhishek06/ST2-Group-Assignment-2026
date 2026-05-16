@@ -191,8 +191,6 @@ class SortingVisualiser:
         duration = time.time() - self.start_time
         self.status = f"{self.algorithm} completed in {duration:.2f}s"
 
-        self.auto_generate()
-
     def run_tests(self):
         if self.sorting:
             return
